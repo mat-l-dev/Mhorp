@@ -5,7 +5,7 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { orders, orderItems, paymentProofs } from '@/lib/db/schema';
+import { orders, orderItems, paymentProofs, users } from '@/lib/db/schema';
 import { createClient } from '@/lib/supabase/server';
 import { getCurrentUser } from './auth';
 import { type CartItem } from '@/lib/store/cart';
@@ -229,3 +229,116 @@ export async function uploadProof(formData: FormData) {
   }
 }
 
+/**
+ * Verifica si el usuario actual es administrador
+ */
+async function isAdmin() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  
+  if (!user) return false;
+
+  // Verificar por email de entorno
+  if (process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL) {
+    return true;
+  }
+
+  // Verificar por rol en base de datos
+  const dbUser = await db.query.users.findFirst({
+    where: eq(users.id, user.id),
+  });
+
+  return dbUser?.role === 'admin';
+}
+
+/**
+ * Obtiene todos los pedidos pendientes de confirmación (solo admin)
+ */
+export async function getPendingOrders() {
+  if (!(await isAdmin())) {
+    return { error: 'No autorizado' };
+  }
+
+  try {
+    const pendingOrders = await db.query.orders.findMany({
+      where: eq(orders.status, 'awaiting_confirmation'),
+      orderBy: (orders, { desc }) => [desc(orders.createdAt)],
+      with: {
+        paymentProofs: { 
+          where: eq(paymentProofs.status, 'pending_review'),
+          orderBy: (paymentProofs, { desc }) => [desc(paymentProofs.uploadedAt)],
+        },
+        user: true,
+        items: { with: { product: true } },
+      },
+    });
+
+    return { orders: pendingOrders };
+  } catch (error) {
+    console.error('Error al obtener pedidos pendientes:', error);
+    return { error: 'Error al obtener pedidos' };
+  }
+}
+
+/**
+ * Aprueba un pedido y su comprobante de pago (solo admin)
+ */
+export async function approveOrder(orderId: number, proofId: number) {
+  if (!(await isAdmin())) {
+    return { error: 'No autorizado' };
+  }
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(orders)
+        .set({ status: 'processing' })
+        .where(eq(orders.id, orderId));
+      
+      await tx
+        .update(paymentProofs)
+        .set({ status: 'approved' })
+        .where(eq(paymentProofs.id, proofId));
+    });
+
+    revalidatePath('/admin/orders');
+    revalidatePath('/account/orders');
+    return { success: 'Pedido aprobado exitosamente.' };
+  } catch (error) {
+    console.error('Error al aprobar pedido:', error);
+    return { error: 'Error al aprobar el pedido' };
+  }
+}
+
+/**
+ * Rechaza un pedido y su comprobante de pago (solo admin)
+ */
+export async function rejectOrder(orderId: number, proofId: number, reason: string) {
+  if (!(await isAdmin())) {
+    return { error: 'No autorizado' };
+  }
+
+  try {
+    await db.transaction(async (tx) => {
+      await tx
+        .update(orders)
+        .set({ status: 'awaiting_payment' })
+        .where(eq(orders.id, orderId));
+      
+      await tx
+        .update(paymentProofs)
+        .set({ 
+          status: 'rejected',
+          adminNotes: reason,
+        })
+        .where(eq(paymentProofs.id, proofId));
+    });
+
+    revalidatePath('/admin/orders');
+    revalidatePath('/account/orders');
+    return { success: 'Pedido rechazado. El cliente deberá subir un nuevo comprobante.' };
+  } catch (error) {
+    console.error('Error al rechazar pedido:', error);
+    return { error: 'Error al rechazar el pedido' };
+  }
+}

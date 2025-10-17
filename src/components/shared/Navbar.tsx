@@ -5,10 +5,21 @@ import Link from 'next/link';
 import LogoutButton from './LogoutButton';
 import CartIcon from './CartIcon';
 import { Button } from '@/components/ui/button';
+import { db } from '@/lib/db';
+import { users } from '@/lib/db/schema';
+import { eq } from 'drizzle-orm';
+
+async function isUserAdmin(userId: string) {
+  const dbUser = await db.query.users.findFirst({
+    where: eq(users.id, userId),
+  });
+  return dbUser?.role === 'admin';
+}
 
 export default async function Navbar() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
+  const isAdmin = user ? await isUserAdmin(user.id) : false;
 
   return (
     <nav className="w-full border-b">
@@ -23,6 +34,11 @@ export default async function Navbar() {
             <CartIcon />
             {user ? (
               <>
+                {isAdmin && (
+                  <Button variant="outline" asChild size="sm">
+                    <Link href="/admin/dashboard">Admin Panel</Link>
+                  </Button>
+                )}
                 <Button variant="ghost" asChild>
                   <Link href="/account/orders">Mi Cuenta</Link>
                 </Button>

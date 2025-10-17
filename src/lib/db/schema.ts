@@ -4,6 +4,9 @@
 import { pgTable, text, serial, timestamp, integer, decimal, json, boolean, pgEnum } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
+// Enums
+export const userRoleEnum = pgEnum('user_role', ['customer', 'admin']);
+
 // Tabla de productos
 export const products = pgTable('products', {
   id: serial('id').primaryKey(),
@@ -21,7 +24,7 @@ export const users = pgTable('users', {
   id: text('id').primaryKey(), // Coincide con el ID de Supabase Auth
   email: text('email').notNull().unique(),
   name: text('name'),
-  role: text('role').default('customer').notNull(), // 'customer' | 'admin'
+  role: userRoleEnum('role').default('customer').notNull(), // 'customer' | 'admin'
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
