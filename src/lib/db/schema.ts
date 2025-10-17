@@ -1,7 +1,7 @@
 // src/lib/db/schema.ts
 // Propósito: Definir todos los esquemas de la base de datos usando Drizzle ORM.
 
-import { pgTable, text, serial, timestamp, integer, decimal, json, boolean } from 'drizzle-orm/pg-core';
+import { pgTable, text, serial, timestamp, integer, decimal, json, boolean, pgEnum } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Tabla de productos
@@ -67,6 +67,24 @@ export const orderItems = pgTable('order_items', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+// Enum para estados de comprobantes de pago
+export const proofStatusEnum = pgEnum('proof_status', [
+  'pending_review',
+  'approved',
+  'rejected',
+]);
+
+// Tabla de comprobantes de pago
+export const paymentProofs = pgTable('payment_proofs', {
+  id: serial('id').primaryKey(),
+  orderId: integer('order_id').references(() => orders.id, { onDelete: 'cascade' }).notNull(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  filePath: text('file_path').notNull(), // Ruta al archivo en Supabase Storage
+  status: proofStatusEnum('status').default('pending_review').notNull(),
+  adminNotes: text('admin_notes'), // Feedback del admin en caso de rechazo
+  uploadedAt: timestamp('uploaded_at').defaultNow().notNull(),
+});
+
 // Relaciones
 export const productsRelations = relations(products, ({ many }) => ({
   cartItems: many(cartItems),
@@ -76,6 +94,7 @@ export const productsRelations = relations(products, ({ many }) => ({
 export const usersRelations = relations(users, ({ many }) => ({
   carts: many(carts),
   orders: many(orders),
+  paymentProofs: many(paymentProofs),
 }));
 
 export const cartsRelations = relations(carts, ({ one, many }) => ({
@@ -103,6 +122,7 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
     references: [users.id],
   }),
   items: many(orderItems),
+  paymentProofs: many(paymentProofs),
 }));
 
 export const orderItemsRelations = relations(orderItems, ({ one }) => ({
@@ -113,5 +133,16 @@ export const orderItemsRelations = relations(orderItems, ({ one }) => ({
   product: one(products, {
     fields: [orderItems.productId],
     references: [products.id],
+  }),
+}));
+
+export const paymentProofsRelations = relations(paymentProofs, ({ one }) => ({
+  order: one(orders, {
+    fields: [paymentProofs.orderId],
+    references: [orders.id],
+  }),
+  user: one(users, {
+    fields: [paymentProofs.userId],
+    references: [users.id],
   }),
 }));

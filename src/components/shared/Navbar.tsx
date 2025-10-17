@@ -23,6 +23,9 @@ export default async function Navbar() {
             <CartIcon />
             {user ? (
               <>
+                <Button variant="ghost" asChild>
+                  <Link href="/account/orders">Mi Cuenta</Link>
+                </Button>
                 <span className="text-sm text-muted-foreground hidden sm:block">
                   {user.email}
                 </span>

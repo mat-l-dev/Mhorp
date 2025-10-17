@@ -5,10 +5,12 @@
 'use server';
 
 import { db } from '@/lib/db';
-import { orders, orderItems } from '@/lib/db/schema';
+import { orders, orderItems, paymentProofs } from '@/lib/db/schema';
 import { createClient } from '@/lib/supabase/server';
 import { getCurrentUser } from './auth';
 import { type CartItem } from '@/lib/store/cart';
+import { eq, and } from 'drizzle-orm';
+import { revalidatePath } from 'next/cache';
 
 /**
  * Crea un nuevo pedido a partir del carrito actual
@@ -102,20 +104,23 @@ export async function uploadPaymentProof(orderId: string, file: File) {
  * Obtiene los pedidos del usuario actual
  */
 export async function getUserOrders() {
-  try {
-    const user = await getCurrentUser();
-    
-    if (!user) {
-      return { orders: [] };
-    }
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
 
-    // TODO: Implementar lógica de obtener pedidos usando Drizzle
-    // Incluir información de los items del pedido
-
-    return { orders: [] };
-  } catch (error) {
-    return { error: 'Error al obtener pedidos' };
+  if (!user) {
+    return { error: 'Usuario no autenticado.' };
   }
+
+  const userOrders = await db.query.orders.findMany({
+    where: eq(orders.userId, user.id),
+    orderBy: (orders, { desc }) => [desc(orders.createdAt)],
+    with: {
+      items: { with: { product: true } },
+      paymentProofs: true,
+    },
+  });
+
+  return { orders: userOrders };
 }
 
 /**
@@ -159,3 +164,68 @@ export async function updateOrderStatus(orderId: string, status: string) {
     return { error: 'Error al actualizar el estado del pedido' };
   }
 }
+
+/**
+ * Sube un comprobante de pago para un pedido
+ */
+export async function uploadProof(formData: FormData) {
+  const orderId = formData.get('orderId') as string;
+  const file = formData.get('file') as File;
+
+  if (!orderId || !file) {
+    return { error: 'Faltan datos para subir el comprobante.' };
+  }
+
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'Usuario no autenticado.' };
+  }
+
+  // Lógica de seguridad: verificar que el pedido pertenece al usuario
+  const order = await db.query.orders.findFirst({ 
+    where: and(eq(orders.id, parseInt(orderId)), eq(orders.userId, user.id)) 
+  });
+  
+  if (!order) {
+    return { error: 'Pedido no encontrado o no autorizado.' };
+  }
+
+  // Subir archivo a Supabase Storage
+  const fileExt = file.name.split('.').pop();
+  const fileName = `${user.id}-${orderId}-${Date.now()}.${fileExt}`;
+  const filePath = `proofs/${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from('payment_proofs') // Asegúrate de crear este bucket en Supabase!
+    .upload(filePath, file);
+
+  if (uploadError) {
+    console.error('Error de Supabase Storage:', uploadError);
+    return { error: 'No se pudo subir el archivo.' };
+  }
+
+  // Actualizar la base de datos
+  try {
+    await db.transaction(async (tx) => {
+      await tx.insert(paymentProofs).values({
+        orderId: parseInt(orderId),
+        userId: user.id,
+        filePath: filePath,
+      });
+
+      await tx.update(orders)
+        .set({ status: 'awaiting_confirmation' })
+        .where(eq(orders.id, parseInt(orderId)));
+    });
+
+    revalidatePath('/account/orders');
+    return { success: 'Comprobante subido con éxito.' };
+
+  } catch (dbError) {
+    console.error('Error de base de datos:', dbError);
+    return { error: 'No se pudo registrar el comprobante.' };
+  }
+}
+
