@@ -1,20 +1,16 @@
 // src/actions/auth.ts
-// Propósito: Server Actions para manejar la autenticación de usuarios.
-// Incluye login, signup, logout y gestión de sesiones.
+// Propósito: Contiene las Server Actions para la autenticación de usuarios.
 
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
+import { headers } from 'next/headers';
 import { redirect } from 'next/navigation';
 
-/**
- * Inicia sesión de un usuario existente
- */
 export async function login(formData: FormData) {
-  const supabase = createClient();
-
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
+  const supabase = await createClient();
 
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -22,44 +18,44 @@ export async function login(formData: FormData) {
   });
 
   if (error) {
-    return { error: error.message };
+    // TODO: Manejar y mostrar el error en el formulario
+    console.error('Error en el login:', error);
+    return redirect('/login?message=Could not authenticate user');
   }
 
-  redirect('/');
+  return redirect('/');
 }
 
-/**
- * Registra un nuevo usuario
- */
 export async function signup(formData: FormData) {
-  const supabase = createClient();
-
+  const headersList = await headers();
+  const origin = headersList.get('origin');
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
-  const name = formData.get('name') as string;
+  const supabase = await createClient();
 
   const { error } = await supabase.auth.signUp({
     email,
     password,
     options: {
-      data: {
-        name,
-      },
+      emailRedirectTo: `${origin}/auth/callback`,
     },
   });
 
   if (error) {
-    return { error: error.message };
+    // TODO: Manejar y mostrar el error en el formulario
+    console.error('Error en el signup:', error);
+    return redirect('/login?message=Could not authenticate user');
   }
 
-  redirect('/');
+  // TODO: Mostrar un mensaje de "revisa tu email para confirmar"
+  return redirect('/login?message=Check email to continue sign in process');
 }
 
 /**
  * Cierra la sesión del usuario actual
  */
 export async function logout() {
-  const supabase = createClient();
+  const supabase = await createClient();
   await supabase.auth.signOut();
   redirect('/login');
 }
@@ -68,7 +64,7 @@ export async function logout() {
  * Obtiene el usuario actual autenticado
  */
 export async function getCurrentUser() {
-  const supabase = createClient();
+  const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
   return user;
 }

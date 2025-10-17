@@ -1,16 +1,26 @@
 // src/components/shared/Navbar.tsx
-// Propósito: Componente de barra de navegación principal compartido en toda la aplicación.
+// Propósito: Barra de navegación principal del sitio.
+
+import Link from 'next/link';
 
 export default function Navbar() {
   return (
-    <nav className="w-full border-b bg-background">
-      <div className="container mx-auto px-4 h-16 flex items-center justify-between">
-        <div className="flex items-center gap-6">
-          <h1 className="text-2xl font-bold">Mhorp</h1>
-          {/* TODO: Agregar enlaces de navegación */}
-        </div>
-        <div className="flex items-center gap-4">
-          {/* TODO: Agregar carrito y menú de usuario */}
+    <nav className="w-full border-b">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between h-16">
+          <div className="flex items-center">
+            <Link href="/" className="text-2xl font-bold">
+              Mhorp
+            </Link>
+          </div>
+          <div className="flex items-center space-x-4">
+            <Link href="/cart" className="hover:underline">
+              Carrito
+            </Link>
+            <Link href="/login" className="hover:underline">
+              Login
+            </Link>
+          </div>
         </div>
       </div>
     </nav>
