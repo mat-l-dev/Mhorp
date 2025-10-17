@@ -1,9 +1,12 @@
 // scripts/seed.ts
 // Propósito: Poblar la base de datos con datos de muestra.
 
+import * as dotenv from 'dotenv';
+// Cargar variables de entorno desde .env.local
+dotenv.config({ path: '.env.local' });
+
 import { db } from '@/lib/db';
 import { products } from '@/lib/db/schema';
-import 'dotenv/config';
 
 async function main() {
   console.log('🌱 Empezando el sembrado de la base de datos...');

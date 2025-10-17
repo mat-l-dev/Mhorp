@@ -1,6 +1,17 @@
 // src/lib/db/index.ts
 // Propósito: Inicializar y exportar el cliente de Drizzle ORM.
 
+// Cargar variables de entorno en scripts (tsx, drizzle-kit)
+if (typeof window === 'undefined' && !process.env.NEXT_RUNTIME) {
+  // Estamos en Node.js (script o drizzle-kit), no en Next.js runtime
+  try {
+    const dotenv = require('dotenv');
+    dotenv.config({ path: '.env.local' });
+  } catch (e) {
+    // dotenv no disponible, probablemente en runtime de Next.js
+  }
+}
+
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import * as schema from './schema';
