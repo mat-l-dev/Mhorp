@@ -5,42 +5,58 @@
 'use server';
 
 import { db } from '@/lib/db';
+import { orders, orderItems } from '@/lib/db/schema';
 import { createClient } from '@/lib/supabase/server';
 import { getCurrentUser } from './auth';
-import { clearCart } from './cart';
+import { type CartItem } from '@/lib/store/cart';
 
 /**
  * Crea un nuevo pedido a partir del carrito actual
  */
-export async function createOrder(shippingData: {
-  address: string;
-  city: string;
-  postalCode: string;
-  phone: string;
-}) {
+export async function createOrder(items: CartItem[], totalAmount: number, shippingAddress: string) {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
+  if (!user) {
+    return { error: 'Debes iniciar sesión para crear un pedido.' };
+  }
+
   try {
-    const user = await getCurrentUser();
-    
-    if (!user) {
-      return { error: 'Debes iniciar sesión para crear un pedido' };
-    }
+    // Usamos una transacción para asegurar que todas las operaciones se completen o ninguna lo haga.
+    const newOrder = await db.transaction(async (tx) => {
+      // 1. Crear el registro principal del pedido
+      const [order] = await tx
+        .insert(orders)
+        .values({
+          userId: user.id,
+          total: totalAmount.toString(),
+          shippingAddress,
+          shippingCity: 'Lima', // Por ahora usamos un valor por defecto
+          shippingPhone: '999999999', // Por ahora usamos un valor por defecto
+          status: 'awaiting_payment', // Estado inicial según nuestra máquina de estados
+        })
+        .returning();
 
-    // TODO: Implementar lógica de crear pedido
-    // 1. Obtener items del carrito
-    // 2. Calcular total
-    // 3. Crear registro de orden en la BD
-    // 4. Crear registros de order_items
-    // 5. Vaciar carrito
-    // 6. Enviar email de confirmación (opcional)
+      // 2. Crear los registros para cada item del pedido
+      const itemsToInsert = items.map((item) => ({
+        orderId: order.id,
+        productId: item.product.id,
+        quantity: item.quantity,
+        priceAtPurchase: item.product.price, // Guardamos el precio al momento de la compra
+      }));
 
-    await clearCart();
+      await tx.insert(orderItems).values(itemsToInsert);
 
-    return { 
-      success: true,
-      orderId: 'ORDER_ID_PLACEHOLDER' 
-    };
+      return order;
+    });
+
+    // Si la transacción fue exitosa, redirigimos a la página de confirmación
+    // Esta redirección se captura en el cliente para limpiar el carrito.
+    return { success: true, orderId: newOrder.id };
+
   } catch (error) {
-    return { error: 'Error al crear el pedido' };
+    console.error('Error al crear el pedido:', error);
+    return { error: 'No se pudo crear el pedido. Inténtalo de nuevo.' };
   }
 }
 
