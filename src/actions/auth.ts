@@ -1,6 +1,5 @@
 // src/actions/auth.ts
-// Propósito: Contiene las Server Actions para la autenticación de usuarios.
-
+// Propósito: Contiene las Server Actions para un ciclo de autenticación robusto.
 'use server';
 
 import { createClient } from '@/lib/supabase/server';
@@ -18,9 +17,7 @@ export async function login(formData: FormData) {
   });
 
   if (error) {
-    // TODO: Manejar y mostrar el error en el formulario
-    console.error('Error en el login:', error);
-    return redirect('/login?message=Could not authenticate user');
+    return redirect('/login?message=Error: Credenciales inválidas.');
   }
 
   return redirect('/');
@@ -42,22 +39,16 @@ export async function signup(formData: FormData) {
   });
 
   if (error) {
-    // TODO: Manejar y mostrar el error en el formulario
-    console.error('Error en el signup:', error);
-    return redirect('/login?message=Could not authenticate user');
+    return redirect('/login?message=Error: No se pudo registrar el usuario.');
   }
 
-  // TODO: Mostrar un mensaje de "revisa tu email para confirmar"
-  return redirect('/login?message=Check email to continue sign in process');
+  return redirect('/login?message=Revisa tu email para completar el registro.');
 }
 
-/**
- * Cierra la sesión del usuario actual
- */
 export async function logout() {
-  const supabase = await createClient();
-  await supabase.auth.signOut();
-  redirect('/login');
+    const supabase = await createClient();
+    await supabase.auth.signOut();
+    return redirect('/login');
 }
 
 /**

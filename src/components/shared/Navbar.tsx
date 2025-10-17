@@ -1,9 +1,14 @@
 // src/components/shared/Navbar.tsx
-// Propósito: Barra de navegación principal del sitio.
-
+// Propósito: Barra de navegación dinámica que reacciona al estado de autenticación.
+import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
+import LogoutButton from './LogoutButton';
+import { Button } from '@/components/ui/button';
 
-export default function Navbar() {
+export default async function Navbar() {
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+
   return (
     <nav className="w-full border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -14,12 +19,21 @@ export default function Navbar() {
             </Link>
           </div>
           <div className="flex items-center space-x-4">
-            <Link href="/cart" className="hover:underline">
-              Carrito
-            </Link>
-            <Link href="/login" className="hover:underline">
-              Login
-            </Link>
+            <Button variant="ghost" asChild>
+              <Link href="/cart">Carrito</Link>
+            </Button>
+            {user ? (
+              <>
+                <span className="text-sm text-muted-foreground hidden sm:block">
+                  {user.email}
+                </span>
+                <LogoutButton />
+              </>
+            ) : (
+              <Button asChild>
+                <Link href="/login">Acceder</Link>
+              </Button>
+            )}
           </div>
         </div>
       </div>
