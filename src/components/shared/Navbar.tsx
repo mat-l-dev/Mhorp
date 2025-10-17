@@ -3,6 +3,7 @@
 import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import LogoutButton from './LogoutButton';
+import CartIcon from './CartIcon';
 import { Button } from '@/components/ui/button';
 
 export default async function Navbar() {
@@ -19,9 +20,7 @@ export default async function Navbar() {
             </Link>
           </div>
           <div className="flex items-center space-x-4">
-            <Button variant="ghost" asChild>
-              <Link href="/cart">Carrito</Link>
-            </Button>
+            <CartIcon />
             {user ? (
               <>
                 <span className="text-sm text-muted-foreground hidden sm:block">

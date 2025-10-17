@@ -5,12 +5,15 @@
 'use server';
 
 import { db } from '@/lib/db';
+import { carts, cartItems } from '@/lib/db/schema';
 import { getCurrentUser } from './auth';
+import { createClient } from '@/lib/supabase/server';
+import { eq, and } from 'drizzle-orm';
 
 /**
  * Agrega un producto al carrito del usuario
  */
-export async function addToCart(productId: string, quantity: number = 1) {
+export async function addToCart(productId: number, quantity: number = 1) {
   try {
     const user = await getCurrentUser();
     
@@ -18,13 +21,79 @@ export async function addToCart(productId: string, quantity: number = 1) {
       return { error: 'Debes iniciar sesión para agregar productos al carrito' };
     }
 
-    // TODO: Implementar lógica de agregar al carrito usando Drizzle
+    // Buscar o crear el carrito del usuario
+    let userCart = await db.query.carts.findFirst({
+      where: eq(carts.userId, user.id),
+    });
+
+    if (!userCart) {
+      const [newCart] = await db.insert(carts).values({
+        userId: user.id,
+      }).returning();
+      userCart = newCart;
+    }
+
     // Verificar si el producto ya existe en el carrito
-    // Si existe, actualizar cantidad; si no, crear nuevo registro
+    const existingItem = await db.query.cartItems.findFirst({
+      where: and(
+        eq(cartItems.cartId, userCart.id),
+        eq(cartItems.productId, productId)
+      ),
+    });
+
+    if (existingItem) {
+      // Actualizar cantidad
+      await db
+        .update(cartItems)
+        .set({ quantity: existingItem.quantity + quantity })
+        .where(eq(cartItems.id, existingItem.id));
+    } else {
+      // Crear nuevo item
+      await db.insert(cartItems).values({
+        cartId: userCart.id,
+        productId,
+        quantity,
+      });
+    }
 
     return { success: true };
   } catch (error) {
+    console.error('Error al agregar al carrito:', error);
     return { error: 'Error al agregar producto al carrito' };
+  }
+}
+
+/**
+ * Obtiene el carrito del usuario actual
+ */
+export async function getCart() {
+  try {
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) return null;
+
+    const userCart = await db.query.carts.findFirst({
+      where: eq(carts.userId, user.id),
+      with: {
+        items: { 
+          with: { 
+            product: true 
+          } 
+        },
+      },
+    });
+
+    if (!userCart) return [];
+
+    // Formatear los datos para que coincidan con el tipo CartItem de Zustand
+    return userCart.items.map(item => ({
+      product: item.product,
+      quantity: item.quantity,
+    }));
+  } catch (error) {
+    console.error('Error al obtener carrito:', error);
+    return null;
   }
 }
 
@@ -67,26 +136,6 @@ export async function updateCartItemQuantity(cartItemId: string, quantity: numbe
     return { success: true };
   } catch (error) {
     return { error: 'Error al actualizar cantidad' };
-  }
-}
-
-/**
- * Obtiene el carrito del usuario actual
- */
-export async function getCart() {
-  try {
-    const user = await getCurrentUser();
-    
-    if (!user) {
-      return { cart: [] };
-    }
-
-    // TODO: Implementar lógica de obtener carrito usando Drizzle
-    // Incluir información del producto asociado
-
-    return { cart: [] };
-  } catch (error) {
-    return { error: 'Error al obtener carrito' };
   }
 }
 
