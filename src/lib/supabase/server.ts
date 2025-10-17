@@ -1,10 +1,6 @@
 // src/lib/supabase/server.ts
 // Propósito: Crear un cliente de Supabase para el lado del servidor.
 
-// TODO: Instalar dependencias: pnpm add @supabase/supabase-js @supabase/ssr
-// TODO: Descomentar el código siguiente una vez instaladas las dependencias
-
-/*
 import { createServerClient, type CookieOptions } from '@supabase/ssr';
 import { cookies } from 'next/headers';
 
@@ -32,10 +28,4 @@ export async function createClient() {
       },
     }
   );
-}
-*/
-
-// Exportación temporal hasta instalar las dependencias
-export async function createClient() {
-  return {} as any;
 }
