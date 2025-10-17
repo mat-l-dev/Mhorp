@@ -30,6 +30,7 @@ const adminNavItems = [
   { title: 'Dashboard', href: '/admin/dashboard' },
   { title: 'Pedidos', href: '/admin/orders' },
   { title: 'Productos', href: '/admin/products' },
+  { title: 'Categorías', href: '/admin/categories' },
 ];
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {

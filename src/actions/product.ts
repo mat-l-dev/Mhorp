@@ -42,7 +42,15 @@ const productSchema = z.object({
     message: 'El precio debe ser mayor a 0',
   }),
   stock: z.coerce.number().int().nonnegative('El stock no puede ser negativo'),
-  images: z.array(z.string()).optional(),
+  categoryId: z.coerce.number().nullable().optional(),
+  images: z.string().optional().transform((str) => {
+    if (!str) return null;
+    try {
+      return JSON.parse(str);
+    } catch {
+      return null;
+    }
+  }),
 });
 
 /**
@@ -126,5 +134,68 @@ export async function getProductById(productId: string) {
   } catch (error) {
     console.error('Error al obtener producto:', error);
     return { error: 'No se pudo obtener el producto' };
+  }
+}
+
+/**
+ * Sube múltiples imágenes de productos a Supabase Storage
+ * Retorna las URLs públicas de las imágenes subidas
+ */
+export async function uploadProductImages(formData: FormData) {
+  if (!(await isAdmin())) {
+    return { error: 'No autorizado' };
+  }
+
+  const files = formData.getAll('files') as File[];
+  
+  if (!files || files.length === 0) {
+    return { error: 'No se proporcionaron archivos' };
+  }
+
+  const supabase = await createClient();
+  const imageUrls: string[] = [];
+
+  try {
+    for (const file of files) {
+      // Validar tipo de archivo
+      if (!file.type.startsWith('image/')) {
+        return { error: `El archivo ${file.name} no es una imagen válida` };
+      }
+
+      // Validar tamaño (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        return { error: `El archivo ${file.name} excede el tamaño máximo de 5MB` };
+      }
+
+      // Generar nombre único para el archivo
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+      const filePath = `products/${fileName}`;
+
+      // Subir archivo a Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('product_images')
+        .upload(filePath, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      if (uploadError) {
+        console.error('Error al subir imagen:', uploadError);
+        return { error: `No se pudo subir el archivo: ${file.name}` };
+      }
+
+      // Obtener URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('product_images')
+        .getPublicUrl(filePath);
+
+      imageUrls.push(publicUrl);
+    }
+
+    return { success: true, urls: imageUrls };
+  } catch (error) {
+    console.error('Error en uploadProductImages:', error);
+    return { error: 'Error al procesar las imágenes' };
   }
 }

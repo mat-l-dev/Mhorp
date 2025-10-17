@@ -4,16 +4,25 @@ import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/com
 import { ProductForm } from '@/components/admin/products/product-form';
 import { getProductById } from '@/actions/product';
 import { notFound } from 'next/navigation';
+import { db } from '@/lib/db';
 
-export default async function EditProductPage({ params }: { params: { id: string } }) {
-  const result = await getProductById(params.id);
+async function getCategories() {
+  return await db.query.categories.findMany({
+    orderBy: (categories, { asc }) => [asc(categories.name)],
+  });
+}
+
+export default async function EditProductPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  const result = await getProductById(id);
+  const categories = await getCategories();
 
   if (result.error || !result.product) {
     notFound();
   }
 
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-4xl">
       <Card>
         <CardHeader>
           <CardTitle>Editar Producto</CardTitle>
@@ -22,7 +31,7 @@ export default async function EditProductPage({ params }: { params: { id: string
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ProductForm product={result.product} />
+          <ProductForm product={result.product} categories={categories} />
         </CardContent>
       </Card>
     </div>

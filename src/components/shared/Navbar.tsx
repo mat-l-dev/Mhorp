@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server';
 import Link from 'next/link';
 import LogoutButton from './LogoutButton';
 import CartIcon from './CartIcon';
+import Searchbar from './Searchbar';
 import { Button } from '@/components/ui/button';
 import { db } from '@/lib/db';
 import { users } from '@/lib/db/schema';
@@ -24,11 +25,14 @@ export default async function Navbar() {
   return (
     <nav className="w-full border-b">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+        <div className="flex items-center justify-between h-16 gap-4">
           <div className="flex items-center">
             <Link href="/" className="text-2xl font-bold">
               Mhorp
             </Link>
+          </div>
+          <div className="hidden md:flex flex-1 max-w-md mx-4">
+            <Searchbar />
           </div>
           <div className="flex items-center space-x-4">
             <CartIcon />

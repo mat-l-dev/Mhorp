@@ -7,6 +7,15 @@ import { relations } from 'drizzle-orm';
 // Enums
 export const userRoleEnum = pgEnum('user_role', ['customer', 'admin']);
 
+// Tabla de categorías
+export const categories = pgTable('categories', {
+  id: serial('id').primaryKey(),
+  name: text('name').notNull().unique(),
+  description: text('description'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
 // Tabla de productos
 export const products = pgTable('products', {
   id: serial('id').primaryKey(),
@@ -15,6 +24,7 @@ export const products = pgTable('products', {
   price: decimal('price', { precision: 10, scale: 2 }).notNull(),
   images: json('images').$type<string[]>(),
   stock: integer('stock').default(0),
+  categoryId: integer('category_id').references(() => categories.id),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -89,7 +99,15 @@ export const paymentProofs = pgTable('payment_proofs', {
 });
 
 // Relaciones
-export const productsRelations = relations(products, ({ many }) => ({
+export const categoriesRelations = relations(categories, ({ many }) => ({
+  products: many(products),
+}));
+
+export const productsRelations = relations(products, ({ one, many }) => ({
+  category: one(categories, {
+    fields: [products.categoryId],
+    references: [categories.id],
+  }),
   cartItems: many(cartItems),
   orderItems: many(orderItems),
 }));

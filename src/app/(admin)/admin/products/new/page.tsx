@@ -2,10 +2,19 @@
 // Propósito: Página para crear un nuevo producto
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card';
 import { ProductForm } from '@/components/admin/products/product-form';
+import { db } from '@/lib/db';
 
-export default function NewProductPage() {
+async function getCategories() {
+  return await db.query.categories.findMany({
+    orderBy: (categories, { asc }) => [asc(categories.name)],
+  });
+}
+
+export default async function NewProductPage() {
+  const categories = await getCategories();
+
   return (
-    <div className="max-w-2xl">
+    <div className="max-w-4xl">
       <Card>
         <CardHeader>
           <CardTitle>Crear Nuevo Producto</CardTitle>
@@ -14,7 +23,7 @@ export default function NewProductPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ProductForm />
+          <ProductForm categories={categories} />
         </CardContent>
       </Card>
     </div>
