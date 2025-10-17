@@ -1,36 +1,151 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Mhorp - E-commerce Platform
 
-## Getting Started
+Plataforma de e-commerce construida con Next.js 15, TypeScript, Tailwind CSS, Drizzle ORM y Supabase.
 
-First, run the development server:
+## 🚀 Stack Tecnológico
+
+- **Framework**: Next.js 15 (App Router, Server Actions)
+- **Lenguaje**: TypeScript
+- **Estilos**: Tailwind CSS 4
+- **Base de Datos**: PostgreSQL (Supabase)
+- **ORM**: Drizzle ORM
+- **Autenticación**: Supabase Auth
+- **Estado**: Zustand (con persistencia en localStorage)
+- **UI Components**: shadcn/ui
+- **Notificaciones**: Sonner
+
+## 📋 Prerrequisitos
+
+- Node.js 18+ 
+- pnpm (recomendado) o npm
+- Cuenta en [Supabase](https://supabase.com)
+
+## ⚙️ Configuración Inicial
+
+### 1. Clonar e Instalar Dependencias
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone https://github.com/mat-l-dev/Mhorp.git
+cd Mhorp
+pnpm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Configurar Variables de Entorno
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**📖 [Ver guía completa de configuración](./CONFIGURACION_ENV.md)**
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+# Copiar archivo de ejemplo
+cp .env.local.example .env.local
 
-## Learn More
+# Editar .env.local con tus credenciales de Supabase
+```
 
-To learn more about Next.js, take a look at the following resources:
+Necesitas configurar:
+- `NEXT_PUBLIC_SUPABASE_URL`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `DATABASE_URL`
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 3. Configurar Base de Datos
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+# Ejecutar migraciones de Drizzle
+pnpm run drizzle:push
 
-## Deploy on Vercel
+# Poblar con datos de ejemplo
+pnpm run db:seed
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 4. Iniciar Servidor de Desarrollo
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm run dev
+```
+
+Abre [http://localhost:3000](http://localhost:3000) en tu navegador.
+
+## 📁 Estructura del Proyecto
+
+```
+src/
+├── actions/          # Server Actions (auth, cart, order)
+├── app/             # App Router de Next.js
+│   ├── (auth)/      # Rutas de autenticación
+│   ├── (store)/     # Rutas de la tienda
+│   └── api/         # API Routes
+├── components/      # Componentes React
+│   ├── shared/      # Componentes compartidos
+│   └── ui/          # Componentes de shadcn/ui
+└── lib/             # Utilidades y configuración
+    ├── db/          # Drizzle ORM (schema, cliente)
+    ├── store/       # Zustand stores
+    └── supabase/    # Cliente de Supabase
+```
+
+## 🎯 Funcionalidades Implementadas
+
+### ✅ Autenticación
+- Registro de usuarios con email
+- Login/Logout
+- Confirmación por email
+- Rutas protegidas
+
+### ✅ Carrito de Compras
+- Agregar/eliminar productos
+- UI optimista (actualización instantánea)
+- Persistencia en localStorage
+- Sincronización con base de datos
+- Contador en tiempo real
+
+### ✅ Checkout y Pedidos
+- Formulario de dirección de envío
+- Creación transaccional de pedidos
+- Máquina de estados (awaiting_payment, etc.)
+- Página de confirmación con instrucciones de pago
+
+### ✅ Productos
+- Listado de productos
+- Imágenes optimizadas con Next.js Image
+- Precios y stock
+- Botón "Agregar al carrito"
+
+## 📚 Documentación Adicional
+
+- [Configuración de Variables de Entorno](./CONFIGURACION_ENV.md)
+- [Sistema de Carrito](./CART_SYSTEM.md)
+- [Configuración de Base de Datos](./SETUP_DATABASE.md)
+
+## 🛠️ Scripts Disponibles
+
+```bash
+pnpm run dev          # Iniciar servidor de desarrollo
+pnpm run build        # Construir para producción
+pnpm run start        # Iniciar servidor de producción
+pnpm run lint         # Ejecutar ESLint
+pnpm run drizzle:push # Sincronizar schema con base de datos
+pnpm run db:seed      # Poblar base de datos con datos de ejemplo
+pnpm run drizzle:studio # Abrir Drizzle Studio (GUI para DB)
+```
+
+## 🔐 Seguridad
+
+- Variables de entorno en `.env.local` (no se suben a GitHub)
+- Autenticación manejada por Supabase
+- Server Actions para operaciones críticas
+- Validación en servidor y cliente
+
+## 🚧 En Desarrollo
+
+- [ ] Subida de comprobantes de pago
+- [ ] Panel de administración
+- [ ] Historial de pedidos del usuario
+- [ ] Sistema de roles (admin/usuario)
+- [ ] Pasarela de pagos integrada
+
+## 📝 Licencia
+
+Este proyecto es privado y está en desarrollo.
+
+## 👨‍💻 Autor
+
+Mathew - [@mat-l-dev](https://github.com/mat-l-dev)
