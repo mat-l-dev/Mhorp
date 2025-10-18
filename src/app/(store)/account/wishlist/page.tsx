@@ -1,7 +1,9 @@
 // src/app/(store)/account/wishlist/page.tsx
 // Propósito: Página de lista de deseos del usuario
 import { getUserWishlist } from '@/actions/wishlist';
+import { getUserSharedWishlists } from '@/actions/shared-wishlist';
 import ProductCard from '@/components/shared/ProductCard';
+import { ShareWishlistButton } from '@/components/shared/ShareWishlistButton';
 import { Heart } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -12,20 +14,30 @@ export const metadata = {
 };
 
 export default async function WishlistPage() {
-  const wishlistItems = await getUserWishlist();
+  const [wishlistItems, sharedWishlists] = await Promise.all([
+    getUserWishlist(),
+    getUserSharedWishlists(),
+  ]);
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
-          <Heart className="h-8 w-8 fill-red-500 text-red-500" />
-          Mi Lista de Deseos
-        </h1>
-        <p className="text-muted-foreground">
-          {wishlistItems.length === 0
-            ? 'Aún no tienes productos guardados'
-            : `${wishlistItems.length} ${wishlistItems.length === 1 ? 'producto guardado' : 'productos guardados'}`}
-        </p>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-3xl font-bold mb-2 flex items-center gap-3">
+              <Heart className="h-8 w-8 fill-red-500 text-red-500" />
+              Mi Lista de Deseos
+            </h1>
+            <p className="text-muted-foreground">
+              {wishlistItems.length === 0
+                ? 'Aún no tienes productos guardados'
+                : `${wishlistItems.length} ${wishlistItems.length === 1 ? 'producto guardado' : 'productos guardados'}`}
+            </p>
+          </div>
+          {wishlistItems.length > 0 && (
+            <ShareWishlistButton existingShares={sharedWishlists} />
+          )}
+        </div>
       </div>
 
       {wishlistItems.length > 0 ? (

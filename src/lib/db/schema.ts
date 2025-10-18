@@ -248,3 +248,24 @@ export const priceHistoryRelations = relations(priceHistory, ({ one }) => ({
     references: [products.id],
   }),
 }));
+
+// Tabla de wishlists compartibles
+export const sharedWishlists = pgTable('shared_wishlists', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  token: text('token').notNull().unique(), // Token único para el link compartible
+  name: text('name'), // Nombre opcional de la wishlist (ej: "Cumpleaños de Juan")
+  description: text('description'), // Descripción opcional
+  isPublic: boolean('is_public').default(true).notNull(), // Si es visible públicamente
+  viewCount: integer('view_count').default(0).notNull(), // Contador de vistas
+  expiresAt: timestamp('expires_at'), // Fecha de expiración opcional
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+export const sharedWishlistsRelations = relations(sharedWishlists, ({ one }) => ({
+  user: one(users, {
+    fields: [sharedWishlists.userId],
+    references: [users.id],
+  }),
+}));
