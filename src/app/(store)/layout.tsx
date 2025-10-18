@@ -5,6 +5,7 @@ import Navbar from '@/components/shared/Navbar';
 import CartHydrator from '@/components/shared/CartHydrator';
 import { Toaster } from '@/components/ui/sonner';
 import { getCart } from '@/actions/cart';
+import { InstallPrompt } from '@/components/shared/InstallPrompt';
 
 export default async function StoreLayout({
   children,
@@ -19,6 +20,7 @@ export default async function StoreLayout({
       <CartHydrator serverCart={serverCart} />
       <main>{children}</main>
       <Toaster richColors position="top-right" />
+      <InstallPrompt />
       {/* Aquí irá el Footer en el futuro */}
     </div>
   );
