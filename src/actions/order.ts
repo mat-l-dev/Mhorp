@@ -289,6 +289,16 @@ export async function approveOrder(orderId: number, proofId: number) {
   }
 
   try {
+    // Obtener información del pedido y usuario antes de actualizar
+    const order = await db.query.orders.findFirst({
+      where: eq(orders.id, orderId),
+      with: { user: true },
+    });
+
+    if (!order) {
+      return { error: 'Pedido no encontrado' };
+    }
+
     await db.transaction(async (tx) => {
       await tx
         .update(orders)
@@ -300,6 +310,15 @@ export async function approveOrder(orderId: number, proofId: number) {
         .set({ status: 'approved' })
         .where(eq(paymentProofs.id, proofId));
     });
+
+    // Enviar email de notificación al cliente
+    const { sendOrderStatusUpdateEmail } = await import('./email');
+    await sendOrderStatusUpdateEmail(
+      order.user.email,
+      orderId.toString(),
+      'processing',
+      order.user.name || undefined
+    );
 
     revalidatePath('/admin/orders');
     revalidatePath('/account/orders');
@@ -319,6 +338,16 @@ export async function rejectOrder(orderId: number, proofId: number, reason: stri
   }
 
   try {
+    // Obtener información del pedido y usuario antes de actualizar
+    const order = await db.query.orders.findFirst({
+      where: eq(orders.id, orderId),
+      with: { user: true },
+    });
+
+    if (!order) {
+      return { error: 'Pedido no encontrado' };
+    }
+
     await db.transaction(async (tx) => {
       await tx
         .update(orders)
@@ -333,6 +362,15 @@ export async function rejectOrder(orderId: number, proofId: number, reason: stri
         })
         .where(eq(paymentProofs.id, proofId));
     });
+
+    // Enviar email de notificación al cliente
+    const { sendOrderStatusUpdateEmail } = await import('./email');
+    await sendOrderStatusUpdateEmail(
+      order.user.email,
+      orderId.toString(),
+      'cancelled',
+      order.user.name || undefined
+    );
 
     revalidatePath('/admin/orders');
     revalidatePath('/account/orders');
