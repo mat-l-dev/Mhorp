@@ -18,7 +18,8 @@ export class RedisCacheClient implements CacheClient {
   constructor(redisUrl?: string) {
     // Lazy loading de redis para evitar errores si no está instalado
     try {
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      // Dynamic import usando require (necesario para optional dependency)
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const redis = require('redis');
       
       this.client = redis.createClient({
@@ -114,9 +115,10 @@ export class RedisCacheClient implements CacheClient {
 export function createRedisClient(redisUrl?: string): CacheClient {
   try {
     return new RedisCacheClient(redisUrl);
-  } catch (error) {
+  } catch {
     console.warn('Failed to create Redis client, using memory cache');
     // Importar MemoryCacheClient dinámicamente para evitar dependencias circulares
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const { MemoryCacheClient } = require('./cache.service');
     return new MemoryCacheClient();
   }
