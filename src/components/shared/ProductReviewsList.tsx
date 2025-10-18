@@ -4,7 +4,7 @@ import { getProductReviews } from '@/actions/review';
 import StarRating from './StarRating';
 import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { MessageSquare } from 'lucide-react';
+import { MessageSquare, CheckCircle } from 'lucide-react';
 
 type ProductReviewsListProps = {
   productId: number;
@@ -32,6 +32,12 @@ export default async function ProductReviewsList({ productId }: ProductReviewsLi
               <div className="flex items-center gap-3 mb-1">
                 <span className="font-medium">{review.user.name || 'Usuario'}</span>
                 <StarRating rating={review.rating} readonly size="sm" />
+                {review.isVerified && (
+                  <div className="flex items-center gap-1 text-xs text-green-600 bg-green-50 px-2 py-0.5 rounded-full border border-green-200">
+                    <CheckCircle className="h-3 w-3" />
+                    <span className="font-medium">Compra Verificada</span>
+                  </div>
+                )}
               </div>
               <p className="text-sm text-muted-foreground">
                 {formatDistanceToNow(new Date(review.createdAt), {

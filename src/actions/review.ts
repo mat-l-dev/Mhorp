@@ -115,21 +115,40 @@ export async function submitReview(prevState: unknown, formData: FormData) {
  */
 export async function getProductReviews(productId: number) {
   try {
-    const productReviews = await db.query.reviews.findMany({
-      where: eq(reviews.productId, productId),
-      with: {
-        user: {
+    const productReviews = await db
+      .select({
+        id: reviews.id,
+        productId: reviews.productId,
+        userId: reviews.userId,
+        rating: reviews.rating,
+        comment: reviews.comment,
+        isVerified: reviews.isVerified,
+        createdAt: reviews.createdAt,
+      })
+      .from(reviews)
+      .where(eq(reviews.productId, productId))
+      .orderBy(sql`${reviews.createdAt} DESC`);
+
+    // Obtener usuarios relacionados
+    const reviewsWithUsers = await Promise.all(
+      productReviews.map(async (review) => {
+        const userResult = await db.query.users.findFirst({
+          where: (users, { eq }) => eq(users.id, review.userId),
           columns: {
             id: true,
             name: true,
             email: true,
           },
-        },
-      },
-      orderBy: (reviews, { desc }) => [desc(reviews.createdAt)],
-    });
+        });
 
-    return productReviews;
+        return {
+          ...review,
+          user: userResult || { id: review.userId, name: null, email: '' },
+        };
+      })
+    );
+
+    return reviewsWithUsers;
   } catch (error) {
     console.error('Error al obtener reseñas:', error);
     return [];

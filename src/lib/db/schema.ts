@@ -108,6 +108,7 @@ export const reviews = pgTable('reviews', {
   productId: integer('product_id').references(() => products.id, { onDelete: 'cascade' }).notNull(),
   rating: integer('rating').notNull(), // Calificación de 1 a 5
   comment: text('comment'),
+  isVerified: boolean('is_verified').default(false).notNull(), // Compra verificada
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
@@ -231,4 +232,19 @@ export const wishlistItemsRelations = relations(wishlistItems, ({ one }) => ({
 
 export const couponsRelations = relations(coupons, ({ many }) => ({
   orders: many(orders),
+}));
+
+// Tabla de historial de precios
+export const priceHistory = pgTable('price_history', {
+  id: serial('id').primaryKey(),
+  productId: integer('product_id').notNull().references(() => products.id, { onDelete: 'cascade' }),
+  price: decimal('price', { precision: 10, scale: 2 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const priceHistoryRelations = relations(priceHistory, ({ one }) => ({
+  product: one(products, {
+    fields: [priceHistory.productId],
+    references: [products.id],
+  }),
 }));
