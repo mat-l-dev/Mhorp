@@ -58,6 +58,7 @@ export function createMockDb(): DrizzleClient {
  * Helper para mockear resultado de query.findFirst
  */
 export function mockFindFirst<T>(db: DrizzleClient, table: string, result: T | null) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const queryTable = (db.query as any)[table];
   if (queryTable && queryTable.findFirst) {
     vi.mocked(queryTable.findFirst).mockResolvedValue(result);
@@ -68,6 +69,7 @@ export function mockFindFirst<T>(db: DrizzleClient, table: string, result: T | n
  * Helper para mockear resultado de query.findMany
  */
 export function mockFindMany<T>(db: DrizzleClient, table: string, results: T[]) {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const queryTable = (db.query as any)[table];
   if (queryTable && queryTable.findMany) {
     vi.mocked(queryTable.findMany).mockResolvedValue(results);
@@ -82,6 +84,7 @@ export function mockInsert<T>(db: DrizzleClient, result: T) {
     values: vi.fn().mockReturnValue({
       returning: vi.fn().mockResolvedValue([result]),
     }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
 }
 
@@ -95,6 +98,7 @@ export function mockUpdate<T>(db: DrizzleClient, result: T) {
         returning: vi.fn().mockResolvedValue([result]),
       }),
     }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
 }
 
@@ -106,5 +110,6 @@ export function mockDelete(db: DrizzleClient) {
     where: vi.fn().mockReturnValue({
       returning: vi.fn().mockResolvedValue([{ id: 1 }]),
     }),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
 }

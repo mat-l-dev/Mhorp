@@ -135,11 +135,13 @@ export function mockStorageUpload(supabase: SupabaseClient, path: string, public
   vi.mocked(storage.upload).mockResolvedValue({
     data: { path },
     error: null,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
   } as any);
 
   if (publicUrl) {
     vi.mocked(storage.getPublicUrl).mockReturnValue({
       data: { publicUrl },
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } as any);
   }
 }
@@ -147,6 +149,7 @@ export function mockStorageUpload(supabase: SupabaseClient, path: string, public
 /**
  * Helper para mockear error de Supabase
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function mockSupabaseError(method: any, message: string, code?: string) {
   vi.mocked(method).mockResolvedValue({
     data: null,
