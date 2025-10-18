@@ -68,14 +68,18 @@ const nextConfig: NextConfig = {
       {
         protocol: 'https',
         hostname: '**.supabase.co',
+        pathname: '/storage/v1/object/public/**',
       },
     ],
-    formats: ['image/avif', 'image/webp'], // Formatos modernos optimizados
+    formats: ['image/avif', 'image/webp'], // Formatos modernos optimizados (70-90% más pequeños)
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840], // Breakpoints responsive
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384], // Tamaños para imágenes pequeñas
-    minimumCacheTTL: 60 * 60 * 24 * 30, // Cache de 30 días
+    minimumCacheTTL: 60 * 60 * 24 * 365, // Cache de 1 año (imágenes inmutables)
     dangerouslyAllowSVG: true, // Permitir SVG
-    contentDispositionType: 'attachment', // Seguridad para SVG
+    contentDispositionType: 'attachment', // Seguridad: descargar SVG en vez de ejecutar
+    contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;", // CSP para SVG
+    unoptimized: false, // Forzar optimización siempre
+    loader: 'default', // Usar optimizador de Next.js
   },
 };
 
