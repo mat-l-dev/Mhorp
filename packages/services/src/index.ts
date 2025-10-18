@@ -55,6 +55,17 @@ export type {
   RateLimitStore,
 } from './rate-limit';
 
+// Exportar Batch Operations
+export {
+  BatchLoader,
+  chunk,
+  batchExecute,
+  createBatchLoader,
+  withTransaction,
+  parallelQueries,
+  QueryCache,
+} from './common/batch-operations';
+
 // Exportar errores
 export {
   AppError,
