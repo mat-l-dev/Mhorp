@@ -65,5 +65,42 @@ if (!databaseUrl.startsWith('postgres://') && !databaseUrl.startsWith('postgresq
   );
 }
 
-const client = postgres(databaseUrl);
+// Configuración de connection pooling optimizado
+const poolConfig = {
+  // Connection Pool Settings
+  max: parseInt(process.env.DB_POOL_MAX || '20'), // Máximo de conexiones en el pool
+  idle_timeout: parseInt(process.env.DB_IDLE_TIMEOUT || '20'), // Segundos antes de cerrar conexión idle
+  connect_timeout: parseInt(process.env.DB_CONNECT_TIMEOUT || '10'), // Timeout de conexión inicial
+  
+  // Performance Optimizations
+  prepare: true, // Usar prepared statements (más rápido)
+  
+  // Connection Management
+  connection: {
+    application_name: 'mhor-ecommerce',
+  },
+};
+
+const client = postgres(databaseUrl, poolConfig);
 export const db = drizzle(client, { schema });
+
+// Health check helper
+export async function checkDatabaseConnection(): Promise<boolean> {
+  try {
+    await client`SELECT 1`;
+    return true;
+  } catch (error) {
+    console.error('Database connection check failed:', error);
+    return false;
+  }
+}
+
+// Graceful shutdown
+export async function closeDatabaseConnection(): Promise<void> {
+  try {
+    await client.end();
+    console.log('Database connection closed gracefully');
+  } catch (error) {
+    console.error('Error closing database connection:', error);
+  }
+}
