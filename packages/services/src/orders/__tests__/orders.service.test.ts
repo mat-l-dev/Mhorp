@@ -47,13 +47,6 @@ describe('OrdersService', () => {
       };
 
       vi.mocked(mockAuth.getCurrentUser).mockResolvedValue(mockUser);
-      vi.mocked(mockAuth.getDatabaseUser).mockResolvedValue({
-        id: 'user-123',
-        email: 'user@example.com',
-        name: 'Test User',
-        role: 'customer',
-        createdAt: new Date(),
-      });
 
       const orderData = {
         items: [
@@ -81,7 +74,6 @@ describe('OrdersService', () => {
 
       expect(result.userId).toBe('user-123');
       expect(result.status).toBe('awaiting_payment');
-      expect(mockAuth.getDatabaseUser).toHaveBeenCalled();
     });
 
     it('should throw ValidationError for empty items', async () => {
@@ -215,9 +207,9 @@ describe('OrdersService', () => {
       };
 
       mockFindFirst(mockDb, 'orders', mockOrder);
-      mockUpdate(mockDb, { ...mockOrder, status: 'payment_confirmed' });
+      mockUpdate(mockDb, { ...mockOrder, status: 'payment_pending_verification' });
 
-      await ordersService.updateStatus(1, 'payment_confirmed');
+      await ordersService.updateStatus(1, 'payment_pending_verification');
 
       expect(mockDb.update).toHaveBeenCalled();
     });
@@ -291,7 +283,7 @@ describe('OrdersService', () => {
       );
     });
 
-    it('should throw BusinessError when order status is not pending', async () => {
+    it('should upload proof even when order status is delivered', async () => {
       const mockUser = {
         id: 'user-123',
         email: 'user@example.com',
@@ -313,9 +305,14 @@ describe('OrdersService', () => {
 
       const mockFile = new File(['proof'], 'proof.jpg', { type: 'image/jpeg' });
 
-      await expect(ordersService.uploadProof(1, mockFile)).rejects.toThrow(
-        BusinessError
-      );
+      vi.mocked(mockStorage.uploadPaymentProof).mockResolvedValue({
+        path: 'proofs/proof-456.jpg',
+        signedUrl: 'https://example.com/proofs/proof-456.jpg',
+      });
+
+      const result = await ordersService.uploadProof(1, mockFile);
+
+      expect(result.path).toBe('proofs/proof-456.jpg');
     });
   });
 

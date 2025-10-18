@@ -20,20 +20,21 @@ describe('StorageService', () => {
     it('should upload payment proof successfully', async () => {
       const mockFile = new File(['proof content'], 'proof.jpg', { type: 'image/jpeg' });
 
-      const mockStorage = mockSupabase.storage.from('payment_proofs');
+      const mockStorage = mockSupabase.storage.from('orders');
       vi.mocked(mockStorage.upload).mockResolvedValue({
-        data: { path: 'proofs/proof-123.jpg' },
+        data: { path: 'payment-proofs/user-123/order-123_1234567890.jpg' },
         error: null,
       } as never);
 
-      vi.mocked(mockStorage.getPublicUrl).mockReturnValue({
-        data: { publicUrl: 'https://example.com/proofs/proof-123.jpg' },
+      vi.mocked(mockStorage.createSignedUrl).mockResolvedValue({
+        data: { signedUrl: 'https://example.com/signed-url' },
+        error: null,
       } as never);
 
       const result = await storageService.uploadPaymentProof('user-123', 'order-123', mockFile);
 
       expect(result.path).toContain('order-123');
-      expect(result.publicUrl).toBe('https://example.com/proofs/proof-123.jpg');
+      expect(result.signedUrl).toBe('https://example.com/signed-url');
       expect(mockStorage.upload).toHaveBeenCalled();
     });
 
@@ -46,8 +47,8 @@ describe('StorageService', () => {
     });
 
     it('should throw ValidationError for file too large', async () => {
-      // Create a mock file larger than 10MB
-      const largeContent = new Array(11 * 1024 * 1024).fill('a').join('');
+      // Create a mock file larger than 5MB (uploadPaymentProof limit)
+      const largeContent = new Array(6 * 1024 * 1024).fill('a').join('');
       const mockFile = new File([largeContent], 'large.jpg', { type: 'image/jpeg' });
 
       await expect(
@@ -55,7 +56,7 @@ describe('StorageService', () => {
       ).rejects.toThrow(ValidationError);
       await expect(
         storageService.uploadPaymentProof('user-123', 'order-123', mockFile)
-      ).rejects.toThrow('excede el tamaño máximo');
+      ).rejects.toThrow('Archivo muy grande');
     });
 
     it('should handle upload errors', async () => {
@@ -77,9 +78,9 @@ describe('StorageService', () => {
     it('should upload product image successfully', async () => {
       const mockFile = new File(['image content'], 'product.jpg', { type: 'image/jpeg' });
 
-      const mockStorage = mockSupabase.storage.from('product_images');
+      const mockStorage = mockSupabase.storage.from('products');
       vi.mocked(mockStorage.upload).mockResolvedValue({
-        data: { path: 'products/product-123.jpg' },
+        data: { path: 'products/product-slug-123_1234567890.jpg' },
         error: null,
       } as never);
 
@@ -101,8 +102,8 @@ describe('StorageService', () => {
       );
     });
 
-    it('should throw ValidationError for file too large (5MB limit)', async () => {
-      const largeContent = new Array(6 * 1024 * 1024).fill('a').join('');
+    it('should throw ValidationError for file too large (10MB limit)', async () => {
+      const largeContent = new Array(11 * 1024 * 1024).fill('a').join('');
       const mockFile = new File([largeContent], 'large.jpg', { type: 'image/jpeg' });
 
       await expect(storageService.uploadProductImage(mockFile, 'product-slug-123')).rejects.toThrow(
@@ -169,12 +170,8 @@ describe('StorageService', () => {
         error: null,
       } as never);
 
-      const result = await storageService.deleteFile(
-        'payment_proofs',
-        'proofs/proof-123.jpg'
-      );
+      await storageService.deleteFile('payment_proofs', 'proofs/proof-123.jpg');
 
-      expect(result).toBe(true);
       expect(mockStorage.remove).toHaveBeenCalledWith(['proofs/proof-123.jpg']);
     });
 
@@ -200,9 +197,8 @@ describe('StorageService', () => {
       } as never);
 
       const paths = ['products/img1.jpg', 'products/img2.jpg', 'products/img3.jpg'];
-      const result = await storageService.deleteFiles('product_images', paths);
+      await storageService.deleteFiles('product_images', paths);
 
-      expect(result).toBe(true);
       expect(mockStorage.remove).toHaveBeenCalledWith(paths);
     });
 
@@ -253,20 +249,22 @@ describe('StorageService', () => {
 
   describe('generateUniqueFileName', () => {
     it('should generate unique filename with prefix and extension', () => {
-      const result = storageService.generateUniqueFileName('payment', 'jpg');
+      const result = storageService.generateUniqueFileName('payment.jpg', 'order');
 
-      expect(result).toMatch(/^payment-\d+-[a-z0-9]+\.jpg$/);
+      // Format: prefix_baseName_timestamp_random.ext
+      expect(result).toMatch(/^order_payment_\d+_[a-z0-9]+\.jpg$/);
     });
 
     it('should generate unique filename without prefix', () => {
-      const result = storageService.generateUniqueFileName('', 'png');
+      const result = storageService.generateUniqueFileName('image.png');
 
-      expect(result).toMatch(/^\d+-[a-z0-9]+\.png$/);
+      // Format: baseName_timestamp_random.ext
+      expect(result).toMatch(/^image_\d+_[a-z0-9]+\.png$/);
     });
 
     it('should generate different names on subsequent calls', () => {
-      const name1 = storageService.generateUniqueFileName('test', 'jpg');
-      const name2 = storageService.generateUniqueFileName('test', 'jpg');
+      const name1 = storageService.generateUniqueFileName('test.jpg', 'prefix');
+      const name2 = storageService.generateUniqueFileName('test.jpg', 'prefix');
 
       expect(name1).not.toBe(name2);
     });

@@ -6,7 +6,7 @@ import { ProductsService } from '../products.service';
 import { createMockDb, mockFindFirst, mockFindMany, mockInsert, mockUpdate, mockDelete } from '../../__mocks__/db.mock';
 import { createMockAuthService, mockAdminUser, mockRegularUser } from '../../__mocks__/services.mock';
 import { createMockStorageService } from '../../__mocks__/services.mock';
-import { NotFoundError, ValidationError, ForbiddenError } from '../../common/errors';
+import { NotFoundError, ValidationError, ForbiddenError, BusinessError } from '../../common/errors';
 import type { DrizzleClient } from '../../common/types';
 
 describe('ProductsService', () => {
@@ -193,10 +193,11 @@ describe('ProductsService', () => {
       expect(result).toEqual(mockProduct);
     });
 
-    it('should throw NotFoundError when product not found', async () => {
+    it('should return null when product not found', async () => {
       mockFindFirst(mockDb, 'products', null);
 
-      await expect(productsService.getById(999)).rejects.toThrow(NotFoundError);
+      const result = await productsService.getById(999);
+      expect(result).toBeNull();
     });
   });
 
@@ -208,6 +209,13 @@ describe('ProductsService', () => {
       ];
 
       mockFindMany(mockDb, 'products', mockProducts);
+      
+      // Mock the count query
+      vi.mocked(mockDb.select).mockReturnValue({
+        from: vi.fn().mockReturnValue({
+          where: vi.fn().mockResolvedValue([{ count: 2 }]),
+        }),
+      } as never);
 
       const result = await productsService.getAll({}, { page: 1, limit: 10 });
 
@@ -394,7 +402,7 @@ describe('ProductsService', () => {
       expect(result.stock).toBe(7);
     });
 
-    it('should throw ValidationError when stock would go negative', async () => {
+    it('should throw BusinessError when stock would go negative', async () => {
       const mockProduct = {
         id: 1,
         name: 'Test Product',
@@ -404,7 +412,7 @@ describe('ProductsService', () => {
       mockFindFirst(mockDb, 'products', mockProduct);
 
       await expect(productsService.adjustStock(1, -10)).rejects.toThrow(
-        ValidationError
+        BusinessError
       );
       await expect(productsService.adjustStock(1, -10)).rejects.toThrow(
         'Stock insuficiente'

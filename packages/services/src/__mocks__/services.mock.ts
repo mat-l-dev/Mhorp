@@ -2,6 +2,7 @@
 // Propósito: Mock factories para servicios
 
 import { vi } from 'vitest';
+import { ForbiddenError } from '../common/errors';
 
 /**
  * Crea un mock básico de AuthService
@@ -99,6 +100,9 @@ export function mockAdminUser(authService: ReturnType<typeof createMockAuthServi
  */
 export function mockRegularUser(authService: ReturnType<typeof createMockAuthService>) {
   authService.isAdmin.mockResolvedValue(false);
+  authService.requireAdmin.mockRejectedValue(
+    new ForbiddenError('Necesitas ser administrador')
+  );
   authService.getDatabaseUser.mockResolvedValue({
     id: 'user-id',
     email: 'user@example.com',

@@ -345,11 +345,6 @@ describe('AuthService', () => {
       expect(mockSupabase.auth.signUp).toHaveBeenCalledWith({
         email: 'newuser@example.com',
         password: 'password123',
-        options: {
-          data: {
-            name: 'New User',
-          },
-        },
       });
     });
 

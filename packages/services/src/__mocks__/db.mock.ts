@@ -62,6 +62,22 @@ export function createMockDb(): DrizzleClient {
     where: vi.fn().mockReturnThis(),
     returning: vi.fn().mockResolvedValue([]),
     execute: vi.fn().mockResolvedValue([]),
+    // Transaction support
+    transaction: vi.fn(async (callback) => {
+      // Create a mock transaction context that behaves like the main db
+      const txMock = {
+        insert: vi.fn().mockReturnThis(),
+        update: vi.fn().mockReturnThis(),
+        delete: vi.fn().mockReturnThis(),
+        select: vi.fn(() => queryChain),
+        values: vi.fn().mockReturnThis(),
+        set: vi.fn().mockReturnThis(),
+        where: vi.fn().mockReturnThis(),
+        returning: vi.fn().mockResolvedValue([]),
+        execute: vi.fn().mockResolvedValue([]),
+      };
+      return callback(txMock as never);
+    }),
   } as unknown as DrizzleClient;
 }
 
@@ -122,14 +138,32 @@ export function mockFindMany<T>(db: DrizzleClient, table: string, results: T[]) 
 
 /**
  * Helper para mockear insert
+ * También configura el mock de transacciones para que funcione
  */
 export function mockInsert<T>(db: DrizzleClient, result: T) {
-  vi.mocked(db.insert).mockReturnValue({
+  const insertChain = {
     values: vi.fn().mockReturnValue({
       returning: vi.fn().mockResolvedValue([result]),
     }),
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any);
+  };
+
+  vi.mocked(db.insert).mockReturnValue(insertChain as never);
+
+  // También mockear dentro de transacciones
+  vi.mocked(db.transaction).mockImplementation(async (callback) => {
+    const txMock = {
+      insert: vi.fn().mockReturnValue(insertChain),
+      update: vi.fn().mockReturnThis(),
+      delete: vi.fn().mockReturnThis(),
+      select: vi.fn().mockReturnThis(),
+      values: vi.fn().mockReturnThis(),
+      set: vi.fn().mockReturnThis(),
+      where: vi.fn().mockReturnThis(),
+      returning: vi.fn().mockResolvedValue([result]),
+      execute: vi.fn().mockResolvedValue([result]),
+    };
+    return callback(txMock as never);
+  });
 }
 
 /**
