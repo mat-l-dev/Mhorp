@@ -47,7 +47,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
       <div className="mb-8">
         <h1 className="text-3xl font-bold mb-2">Resultados de búsqueda</h1>
         <p className="text-muted-foreground">
-          {results.length} {results.length === 1 ? 'producto encontrado' : 'productos encontrados'} para "{query}"
+          {results.length} {results.length === 1 ? 'producto encontrado' : 'productos encontrados'} para &ldquo;{query}&rdquo;
         </p>
       </div>
 
@@ -62,7 +62,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
           <Search className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
           <h2 className="text-xl font-semibold mb-2">No se encontraron productos</h2>
           <p className="text-muted-foreground mb-6">
-            No hay productos que coincidan con "{query}"
+            No hay productos que coincidan con &ldquo;{query}&rdquo;
           </p>
           <div className="flex gap-4 justify-center">
             <Button asChild variant="outline">

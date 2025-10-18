@@ -31,7 +31,7 @@ export default async function OrderConfirmationPage({ params }: { params: { orde
           <li>Transferencia BCP: <strong>123-4567890-1-23</strong></li>
         </ul>
         <p className="font-semibold">
-          Una vez realizado el pago, sube tu comprobante en la sección "Mis Pedidos" de tu cuenta.
+          Una vez realizado el pago, sube tu comprobante en la sección &ldquo;Mis Pedidos&rdquo; de tu cuenta.
         </p>
         {/* Aquí, en el futuro, irá el componente para subir el comprobante */}
       </div>

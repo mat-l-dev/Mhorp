@@ -42,7 +42,7 @@ const categorySchema = z.object({
 /**
  * Crea o actualiza una categoría (upsert)
  */
-export async function upsertCategory(prevState: any, formData: FormData) {
+export async function upsertCategory(prevState: unknown, formData: FormData) {
   if (!(await isAdmin())) {
     return { error: 'No autorizado' };
   }
@@ -75,11 +75,11 @@ export async function upsertCategory(prevState: any, formData: FormData) {
 
     revalidatePath('/admin/categories');
     return { success: 'Categoría guardada exitosamente' };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error al guardar categoría:', error);
     
     // Manejar error de duplicado
-    if (error?.code === '23505') {
+    if (error && typeof error === 'object' && 'code' in error && error.code === '23505') {
       return { error: 'Ya existe una categoría con ese nombre' };
     }
     
@@ -99,11 +99,11 @@ export async function deleteCategory(categoryId: number) {
     await db.delete(categories).where(eq(categories.id, categoryId));
     revalidatePath('/admin/categories');
     return { success: 'Categoría eliminada exitosamente' };
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Error al eliminar categoría:', error);
     
     // Manejar error de clave foránea
-    if (error?.code === '23503') {
+    if (error && typeof error === 'object' && 'code' in error && error.code === '23503') {
       return { error: 'No se puede eliminar: hay productos asociados a esta categoría' };
     }
     

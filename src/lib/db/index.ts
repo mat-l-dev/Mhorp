@@ -5,9 +5,10 @@
 if (typeof window === 'undefined' && !process.env.NEXT_RUNTIME) {
   // Estamos en Node.js (script o drizzle-kit), no en Next.js runtime
   try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const dotenv = require('dotenv');
     dotenv.config({ path: '.env.local' });
-  } catch (e) {
+  } catch {
     // dotenv no disponible, probablemente en runtime de Next.js
   }
 }

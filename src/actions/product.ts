@@ -8,7 +8,6 @@ import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
 import { createClient } from '@/lib/supabase/server';
-import { redirect } from 'next/navigation';
 
 /**
  * Verifica si el usuario actual es administrador
@@ -56,7 +55,7 @@ const productSchema = z.object({
 /**
  * Crea o actualiza un producto (upsert)
  */
-export async function upsertProduct(prevState: any, formData: FormData) {
+export async function upsertProduct(prevState: unknown, formData: FormData) {
   if (!(await isAdmin())) {
     return { error: 'No autorizado' };
   }

@@ -32,8 +32,8 @@ type Order = {
   paymentProofUrl: string | null;
   createdAt: Date;
   updatedAt: Date;
-  items: any[];
-  paymentProofs: any[];
+  items: unknown[];
+  paymentProofs: unknown[];
 };
 
 export default function UserOrdersPage() {
