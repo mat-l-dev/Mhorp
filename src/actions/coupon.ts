@@ -80,8 +80,9 @@ export async function applyCoupon(code: string): Promise<{
 
 /**
  * Calcula el descuento basado en el cupón y el total del carrito
+ * (Helper function - no exportada como Server Action)
  */
-export function calculateDiscount(
+function calculateDiscount(
   total: number,
   coupon: typeof coupons.$inferSelect
 ): number {

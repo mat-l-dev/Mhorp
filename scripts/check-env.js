@@ -1,13 +1,14 @@
 // scripts/check-env.js
 // Script para verificar que las variables de entorno estén configuradas correctamente
 
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const fs = require('fs');
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const path = require('path');
 
 console.log('🔍 Verificando configuración de variables de entorno...\n');
 
 const envPath = path.join(__dirname, '..', '.env.local');
-const envExamplePath = path.join(__dirname, '..', '.env.local.example');
 
 // Verificar si existe .env.local
 if (!fs.existsSync(envPath)) {

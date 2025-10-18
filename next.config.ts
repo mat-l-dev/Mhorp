@@ -1,7 +1,7 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: 'standalone', // Para Docker
+  // output: 'standalone', // Deshabilitado temporalmente - problemas con symlinks en Windows
   images: {
     remotePatterns: [
       {
