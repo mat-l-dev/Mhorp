@@ -5,6 +5,14 @@
 export { AuthService } from './auth/auth.service';
 export type { SignInCredentials, SignUpData } from './auth/auth.service';
 
+export { OrdersService } from './orders/orders.service';
+export type {
+  OrderStatus,
+  CreateOrderData,
+  Order,
+  OrderWithDetails,
+} from './orders/orders.service';
+
 // Exportar errores
 export {
   AppError,
