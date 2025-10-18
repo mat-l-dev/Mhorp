@@ -3,7 +3,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -17,7 +17,7 @@ import { Gift, AlertCircle, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
 
-export default function SignupPage() {
+function SignupForm() {
   const router = useRouter();
   const { referralCode: urlReferralCode, hasReferralCode } = useReferralTracking();
   
@@ -248,5 +248,32 @@ export default function SignupPage() {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense fallback={
+      <div className="container mx-auto px-4 py-8 max-w-md">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-3xl text-center">Crear Cuenta</CardTitle>
+            <CardDescription className="text-center">
+              Cargando...
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4 animate-pulse">
+              <div className="h-10 bg-muted rounded" />
+              <div className="h-10 bg-muted rounded" />
+              <div className="h-10 bg-muted rounded" />
+              <div className="h-10 bg-muted rounded" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    }>
+      <SignupForm />
+    </Suspense>
   );
 }
