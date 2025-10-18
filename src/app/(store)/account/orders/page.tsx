@@ -19,25 +19,10 @@ import {
 } from '@/components/ui/table';
 import UploadProofForm from '@/components/shared/UploadProofForm';
 import { useEffect, useState } from 'react';
-
-type Order = {
-  id: number;
-  userId: string;
-  total: string;
-  status: string;
-  shippingAddress: string;
-  shippingCity: string;
-  shippingPostalCode: string | null;
-  shippingPhone: string;
-  paymentProofUrl: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-  items: unknown[];
-  paymentProofs: unknown[];
-};
+import type { OrderWithDetails } from '@mhorp/services';
 
 export default function UserOrdersPage() {
-  const [orders, setOrders] = useState<Order[]>([]);
+  const [orders, setOrders] = useState<OrderWithDetails[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -99,10 +84,10 @@ export default function UserOrdersPage() {
                   {order.status === 'awaiting_payment' && (
                     <UploadProofForm orderId={order.id.toString()} />
                   )}
-                  {order.status === 'awaiting_confirmation' && (
+                  {order.status === 'payment_pending_verification' && (
                     <span className="text-sm text-amber-600">En revisión</span>
                   )}
-                  {order.status !== 'awaiting_payment' && order.status !== 'awaiting_confirmation' && (
+                  {order.status !== 'awaiting_payment' && order.status !== 'payment_pending_verification' && (
                     <span className="text-sm text-green-600">Procesado</span>
                   )}
                 </TableCell>

@@ -8,33 +8,12 @@ import { useTransition, useState } from 'react';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import type { OrderWithDetails } from '@mhorp/services';
 
-type Order = {
-  id: number;
-  userId: string;
-  total: string;
-  status: string;
-  shippingAddress: string;
-  shippingCity: string;
-  shippingPostalCode: string | null;
-  shippingPhone: string;
-  paymentProofUrl: string | null;
-  createdAt: Date;
-  updatedAt: Date;
-};
-
-type PaymentProof = {
-  id: number;
-  orderId: number;
-  userId: string;
-  filePath: string;
-  status: string;
-  adminNotes: string | null;
-  uploadedAt: Date;
-};
+type PaymentProof = NonNullable<OrderWithDetails['paymentProofs']>[0];
 
 type ProofManagerProps = {
-  order: Order;
+  order: OrderWithDetails;
   proof: PaymentProof;
 };
 

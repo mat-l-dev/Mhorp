@@ -12,7 +12,7 @@ import {
   BusinessError,
   DatabaseError,
 } from '../common/errors';
-import { eq, desc } from 'drizzle-orm';
+import { eq } from 'drizzle-orm';
 
 /**
  * Estados posibles de una orden
@@ -191,6 +191,7 @@ export class OrdersService {
     // Usar db.query para obtener orden con relaciones
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const order = await (this.db as any).query.orders.findFirst({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       where: (orders: any, { eq }: any) => eq(orders.id, orderIdNum),
       with: {
         items: {
@@ -236,7 +237,9 @@ export class OrdersService {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const orders = await (this.db as any).query.orders.findMany({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       where: (orders: any, { eq }: any) => eq(orders.userId, targetUserId),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       orderBy: (orders: any, { desc }: any) => [desc(orders.createdAt)],
       with: {
         items: {
@@ -437,9 +440,6 @@ export class OrdersService {
   }
 
   /**
-   * Obtiene todas las órdenes pendientes de verificación (admin)
-   */
-  /**
    * Obtiene órdenes pendientes de verificación de pago (admin)
    */
   async getPendingVerification(): Promise<OrderWithDetails[]> {
@@ -447,7 +447,9 @@ export class OrdersService {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const orders = await (this.db as any).query.orders.findMany({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       where: (orders: any, { eq }: any) => eq(orders.status, 'payment_pending_verification'),
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       orderBy: (orders: any, { desc }: any) => [desc(orders.createdAt)],
       with: {
         items: {
