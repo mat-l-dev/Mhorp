@@ -38,6 +38,18 @@ Este documento lista todas las tareas que **TÚ** debes hacer manualmente para c
 4. Click en **Run**
 5. ✅ Verifica que aparezca: "Success. No rows returned"
 
+### Migración 4: Indexes de Performance ⚡ **[IMPORTANTE]**
+**Archivo:** `migrations/008_add_performance_indexes.sql`
+
+**Pasos:**
+1. En el mismo SQL Editor de Supabase
+2. Click en **New Query**
+3. Copia y pega el contenido completo de `migrations/008_add_performance_indexes.sql`
+4. Click en **Run** (puede tardar 10-30 segundos)
+5. ✅ Verifica que aparezca: "Success. No rows returned"
+
+**NOTA:** Esta migración crea 35+ indexes para optimizar performance. Es normal que tarde un poco más que las anteriores.
+
 ### Verificación
 Para confirmar que las migraciones se aplicaron correctamente:
 ```sql
@@ -49,6 +61,16 @@ SELECT id, rating, is_verified FROM reviews LIMIT 5;
 
 -- Verifica que existe la tabla shared_wishlists
 SELECT * FROM shared_wishlists LIMIT 5;
+
+-- Verifica que los indexes se crearon (debe mostrar 35+ indexes)
+SELECT 
+  schemaname, 
+  tablename, 
+  indexname 
+FROM pg_indexes 
+WHERE schemaname = 'public' 
+  AND indexname LIKE 'idx_%'
+ORDER BY tablename, indexname;
 ```
 
 ---
@@ -289,6 +311,9 @@ curl -X GET http://localhost:3000/api/cron/price-drop \
 #### Base de Datos
 - [ ] Tabla `price_history` existe
 - [ ] Columna `is_verified` existe en `reviews`
+- [ ] Tabla `shared_wishlists` existe
+- [ ] Indexes de performance creados (35+ indexes)
+- [ ] Extensión pg_trgm habilitada
 - [ ] Hay al menos un registro en `price_history`
 
 #### Variables de Entorno (Local)
