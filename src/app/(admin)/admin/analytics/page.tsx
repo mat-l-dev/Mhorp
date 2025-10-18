@@ -14,17 +14,14 @@ import {
 // Lazy load heavy components
 const MetricsCards = dynamic(() => import('@/components/admin/analytics/MetricsCards').then(mod => ({ default: mod.MetricsCards })), {
   loading: () => <div className="h-40 animate-pulse bg-muted rounded-lg" />,
-  ssr: false, // Solo en cliente para reducir bundle del servidor
 });
 
 const TopProductsSection = dynamic(() => import('@/components/admin/analytics/TopProductsSection').then(mod => ({ default: mod.TopProductsSection })), {
   loading: () => <div className="h-80 animate-pulse bg-muted rounded-lg" />,
-  ssr: false,
 });
 
 const SalesAndCouponsSection = dynamic(() => import('@/components/admin/analytics/SalesAndCouponsSection').then(mod => ({ default: mod.SalesAndCouponsSection })), {
   loading: () => <div className="h-60 animate-pulse bg-muted rounded-lg" />,
-  ssr: false,
 });
 
 export const metadata: Metadata = {
