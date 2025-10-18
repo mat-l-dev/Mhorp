@@ -11,6 +11,7 @@ import {
   DatabaseError,
 } from '../common/errors';
 import type { AuthUser, DatabaseUser, AuthSession } from '../common/types';
+import type { RateLimiter } from '../rate-limit';
 
 export interface SignInCredentials {
   email: string;
@@ -49,7 +50,8 @@ export class AuthService {
     private supabase: SupabaseClient,
     private db: DrizzleClient,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private usersTable: any // Tabla users del schema Drizzle
+    private usersTable: any, // Tabla users del schema Drizzle
+    private rateLimiter?: RateLimiter // Rate limiter opcional para auth
   ) {}
 
   /**
@@ -146,13 +148,32 @@ export class AuthService {
    * Inicia sesión con email y contraseña
    */
   async signIn(credentials: SignInCredentials): Promise<{ user: AuthUser; session: AuthSession }> {
+    // Rate limit por email
+    if (this.rateLimiter) {
+      const result = await this.rateLimiter.check(credentials.email);
+      if (!result.allowed) {
+        throw new UnauthorizedError(
+          'Demasiados intentos de inicio de sesión. Por favor intenta más tarde.'
+        );
+      }
+    }
+
     const { data, error } = await this.supabase.auth.signInWithPassword({
       email: credentials.email,
       password: credentials.password,
     });
 
     if (error || !data.user || !data.session) {
+      // Consumir rate limit (fallo)
+      if (this.rateLimiter) {
+        await this.rateLimiter.consume(credentials.email, false);
+      }
       throw new UnauthorizedError('Credenciales inválidas');
+    }
+
+    // Consumir rate limit (éxito - será decrementado si skipSuccessfulRequests=true)
+    if (this.rateLimiter) {
+      await this.rateLimiter.consume(credentials.email, true);
     }
 
     return {

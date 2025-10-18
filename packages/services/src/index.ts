@@ -40,6 +40,21 @@ export {
 } from './cache';
 export type { CacheClient, CacheOptions } from './cache';
 
+// Exportar Rate Limiting
+export {
+  RateLimiter,
+  MemoryRateLimitStore,
+  RateLimitPresets,
+  createRateLimiter,
+  RedisRateLimitStore,
+  createRedisRateLimitStore,
+} from './rate-limit';
+export type {
+  RateLimitConfig,
+  RateLimitInfo,
+  RateLimitStore,
+} from './rate-limit';
+
 // Exportar errores
 export {
   AppError,
