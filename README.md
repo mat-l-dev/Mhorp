@@ -31,6 +31,7 @@ Plataforma enterprise de e-commerce construida con las últimas tecnologías web
 - ✅ **Sistema de Reseñas y Calificaciones**
   - Calificaciones de 1-5 estrellas con componente interactivo
   - Comentarios detallados de productos
+  - **✨ NUEVO: Badge de "Compra Verificada"** para reseñas de compradores reales
   - Validación: solo usuarios que compraron pueden reseñar
   - Cálculo automático de promedio de calificaciones
   - Edición de reseñas existentes
@@ -38,6 +39,7 @@ Plataforma enterprise de e-commerce construida con las últimas tecnologías web
 - ✅ **Lista de Deseos (Wishlist)**
   - Guardar productos favoritos con un clic
   - Botón de corazón interactivo (fill/outline)
+  - **✨ NUEVO: Notificaciones de bajada de precio** en productos guardados
   - Página dedicada con grid de productos guardados
   - Sincronización en tiempo real
   - Integración en ProductCard y páginas de detalle
@@ -51,11 +53,19 @@ Plataforma enterprise de e-commerce construida con las últimas tecnologías web
   - Integración completa con checkout
   - Códigos únicos generables
   
-- ✅ **Notificaciones por Email**
+- ✅ **Notificaciones Automatizadas**
+  - **✨ NUEVO: Cron Job diario** para detectar bajadas de precio
+  - **✨ NUEVO: Emails automáticos** con templates HTML responsive
   - Emails transaccionales con Resend
   - Templates profesionales con React Email
   - Confirmación de órdenes
   - Notificaciones de estado
+  
+- ✅ **Social Sharing**
+  - **✨ NUEVO: Compartir productos** en WhatsApp, Facebook, Twitter
+  - **✨ NUEVO: Web Share API** para móviles
+  - Copiar link directo al producto
+  - Tracking de shares (próximamente)
 
 ### 🎨 UI/UX de Clase Mundial
 - ✅ **Diseño Responsive**: Mobile-first, optimizado para todos los dispositivos
@@ -67,6 +77,15 @@ Plataforma enterprise de e-commerce construida con las últimas tecnologías web
 
 ### 👨‍💼 Panel de Administración Completo
 - ✅ **Dashboard con Métricas Reales**: Ventas, órdenes, productos más vendidos
+- ✅ **✨ NUEVO: Analytics Dashboard Avanzado** (`/admin/analytics`)
+  - KPIs en tiempo real (Revenue, Órdenes, Ticket Promedio, Usuarios)
+  - Métricas de engagement (Reseñas, Wishlist, Cupones)
+  - Top 5 productos más vendidos con revenue
+  - Top 5 productos mejor calificados
+  - Top 5 productos más en wishlist
+  - Top 5 cupones más utilizados
+  - Ventas de últimos 30 días con gráficos
+  - Tasa de conversión de wishlist → compra
 - ✅ **CRUD de Productos**: Crear, editar, eliminar con validación
 - ✅ **CRUD de Categorías**: Gestión completa de categorías
 - ✅ **Gestión de Órdenes**: Ver, actualizar estados, tracking
