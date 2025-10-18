@@ -6,6 +6,7 @@ import { relations } from 'drizzle-orm';
 
 // Enums
 export const userRoleEnum = pgEnum('user_role', ['customer', 'admin']);
+export const couponTypeEnum = pgEnum('coupon_type', ['percentage', 'fixed']);
 
 // Tabla de categorías
 export const categories = pgTable('categories', {
@@ -66,6 +67,8 @@ export const orders = pgTable('orders', {
   shippingPostalCode: text('shipping_postal_code'),
   shippingPhone: text('shipping_phone').notNull(),
   paymentProofUrl: text('payment_proof_url'),
+  couponId: integer('coupon_id').references(() => coupons.id),
+  discountAmount: decimal('discount_amount', { precision: 10, scale: 2 }).default('0').notNull(),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),
 });
@@ -98,6 +101,35 @@ export const paymentProofs = pgTable('payment_proofs', {
   uploadedAt: timestamp('uploaded_at').defaultNow().notNull(),
 });
 
+// Tabla de reseñas de productos
+export const reviews = pgTable('reviews', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  productId: integer('product_id').references(() => products.id, { onDelete: 'cascade' }).notNull(),
+  rating: integer('rating').notNull(), // Calificación de 1 a 5
+  comment: text('comment'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Tabla de lista de deseos (wishlist)
+export const wishlistItems = pgTable('wishlist_items', {
+  id: serial('id').primaryKey(),
+  userId: text('user_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
+  productId: integer('product_id').references(() => products.id, { onDelete: 'cascade' }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+// Tabla de cupones de descuento
+export const coupons = pgTable('coupons', {
+  id: serial('id').primaryKey(),
+  code: text('code').notNull().unique(),
+  discountType: couponTypeEnum('discount_type').notNull(),
+  discountValue: decimal('discount_value', { precision: 10, scale: 2 }).notNull(),
+  expiresAt: timestamp('expires_at'),
+  isActive: boolean('is_active').default(true).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 // Relaciones
 export const categoriesRelations = relations(categories, ({ many }) => ({
   products: many(products),
@@ -110,12 +142,15 @@ export const productsRelations = relations(products, ({ one, many }) => ({
   }),
   cartItems: many(cartItems),
   orderItems: many(orderItems),
+  reviews: many(reviews),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
   carts: many(carts),
   orders: many(orders),
   paymentProofs: many(paymentProofs),
+  reviews: many(reviews),
+  wishlistItems: many(wishlistItems),
 }));
 
 export const cartsRelations = relations(carts, ({ one, many }) => ({
@@ -142,6 +177,10 @@ export const ordersRelations = relations(orders, ({ one, many }) => ({
     fields: [orders.userId],
     references: [users.id],
   }),
+  coupon: one(coupons, {
+    fields: [orders.couponId],
+    references: [coupons.id],
+  }),
   items: many(orderItems),
   paymentProofs: many(paymentProofs),
 }));
@@ -166,4 +205,30 @@ export const paymentProofsRelations = relations(paymentProofs, ({ one }) => ({
     fields: [paymentProofs.userId],
     references: [users.id],
   }),
+}));
+
+export const reviewsRelations = relations(reviews, ({ one }) => ({
+  user: one(users, {
+    fields: [reviews.userId],
+    references: [users.id],
+  }),
+  product: one(products, {
+    fields: [reviews.productId],
+    references: [products.id],
+  }),
+}));
+
+export const wishlistItemsRelations = relations(wishlistItems, ({ one }) => ({
+  user: one(users, {
+    fields: [wishlistItems.userId],
+    references: [users.id],
+  }),
+  product: one(products, {
+    fields: [wishlistItems.productId],
+    references: [products.id],
+  }),
+}));
+
+export const couponsRelations = relations(coupons, ({ many }) => ({
+  orders: many(orders),
 }));
