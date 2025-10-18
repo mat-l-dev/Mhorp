@@ -48,6 +48,7 @@ export class AuthService {
   constructor(
     private supabase: SupabaseClient,
     private db: DrizzleClient,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private usersTable: any // Tabla users del schema Drizzle
   ) {}
 
@@ -182,7 +183,7 @@ export class AuthService {
         name: data.name || null,
         role: 'customer',
       });
-    } catch (error) {
+    } catch {
       // Si falla la inserción, intentar eliminar el usuario de Auth
       await this.supabase.auth.admin.deleteUser(authData.user.id);
       throw new DatabaseError('Error al crear perfil de usuario');

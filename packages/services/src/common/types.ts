@@ -7,6 +7,7 @@ import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 /**
  * Cliente de Drizzle (tipo genérico)
  */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type DrizzleClient = NodePgDatabase<any>;
 
 /**
