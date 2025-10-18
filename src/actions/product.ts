@@ -1,35 +1,12 @@
 // src/actions/product.ts
-// Propósito: Server Actions para CRUD de productos (solo admin)
+// Propósito: Server Actions para CRUD de productos usando ProductsService
 'use server';
 
-import { db } from '@/lib/db';
-import { products, users } from '@/lib/db/schema';
-import { eq } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
 import { z } from 'zod';
-import { createClient } from '@/lib/supabase/server';
-
-/**
- * Verifica si el usuario actual es administrador
- */
-async function isAdmin() {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
-  
-  if (!user) return false;
-
-  // Verificar por email de entorno
-  if (process.env.ADMIN_EMAIL && user.email === process.env.ADMIN_EMAIL) {
-    return true;
-  }
-
-  // Verificar por rol en base de datos
-  const dbUser = await db.query.users.findFirst({
-    where: eq(users.id, user.id),
-  });
-
-  return dbUser?.role === 'admin';
-}
+import { getProductsService } from '@/lib/services';
+import { isAppError } from '@mhorp/services';
+import type { CreateProductData, UpdateProductData, ProductFilters } from '@mhorp/services';
 
 /**
  * Esquema de validación para productos
@@ -56,10 +33,6 @@ const productSchema = z.object({
  * Crea o actualiza un producto (upsert)
  */
 export async function upsertProduct(prevState: unknown, formData: FormData) {
-  if (!(await isAdmin())) {
-    return { error: 'No autorizado' };
-  }
-
   const data = Object.fromEntries(formData.entries());
   const validated = productSchema.safeParse(data);
 
@@ -72,23 +45,40 @@ export async function upsertProduct(prevState: unknown, formData: FormData) {
   const productId = formData.get('id') as string | null;
 
   try {
+    const productsService = await getProductsService();
+
     if (productId) {
       // Actualizar producto existente
-      await db
-        .update(products)
-        .set({
-          ...validated.data,
-          updatedAt: new Date(),
-        })
-        .where(eq(products.id, parseInt(productId)));
+      const updateData: UpdateProductData = {
+        name: validated.data.name,
+        description: validated.data.description,
+        price: validated.data.price,
+        stock: validated.data.stock,
+        categoryId: validated.data.categoryId ?? undefined,
+        images: validated.data.images ?? undefined,
+      };
+      
+      await productsService.update(parseInt(productId), updateData);
     } else {
       // Crear nuevo producto
-      await db.insert(products).values(validated.data);
+      const createData: CreateProductData = {
+        name: validated.data.name,
+        price: validated.data.price,
+        description: validated.data.description,
+        stock: validated.data.stock,
+        categoryId: validated.data.categoryId ?? undefined,
+        images: validated.data.images ?? undefined,
+      };
+      
+      await productsService.create(createData);
     }
 
     revalidatePath('/admin/products');
     return { success: 'Producto guardado exitosamente' };
   } catch (error) {
+    if (isAppError(error)) {
+      return { error: error.message };
+    }
     console.error('Error al guardar producto:', error);
     return { error: 'No se pudo guardar el producto' };
   }
@@ -98,15 +88,16 @@ export async function upsertProduct(prevState: unknown, formData: FormData) {
  * Elimina un producto por su ID
  */
 export async function deleteProduct(productId: number) {
-  if (!(await isAdmin())) {
-    return { error: 'No autorizado' };
-  }
-
   try {
-    await db.delete(products).where(eq(products.id, productId));
+    const productsService = await getProductsService();
+    await productsService.delete(productId);
+    
     revalidatePath('/admin/products');
     return { success: 'Producto eliminado exitosamente' };
   } catch (error) {
+    if (isAppError(error)) {
+      return { error: error.message };
+    }
     console.error('Error al eliminar producto:', error);
     return { error: 'No se pudo eliminar el producto' };
   }
@@ -116,85 +107,111 @@ export async function deleteProduct(productId: number) {
  * Obtiene un producto por su ID
  */
 export async function getProductById(productId: string) {
-  if (!(await isAdmin())) {
-    return { error: 'No autorizado' };
-  }
-
   try {
-    const product = await db.query.products.findFirst({
-      where: eq(products.id, parseInt(productId)),
-    });
-
-    if (!product) {
-      return { error: 'Producto no encontrado' };
-    }
-
+    const productsService = await getProductsService();
+    const product = await productsService.getById(parseInt(productId));
+    
     return { product };
   } catch (error) {
+    if (isAppError(error)) {
+      return { error: error.message };
+    }
     console.error('Error al obtener producto:', error);
     return { error: 'No se pudo obtener el producto' };
   }
 }
 
 /**
- * Sube múltiples imágenes de productos a Supabase Storage
+ * Sube múltiples imágenes de productos usando ProductsService
  * Retorna las URLs públicas de las imágenes subidas
  */
 export async function uploadProductImages(formData: FormData) {
-  if (!(await isAdmin())) {
-    return { error: 'No autorizado' };
-  }
-
+  const productId = formData.get('productId') as string;
   const files = formData.getAll('files') as File[];
   
+  if (!productId) {
+    return { error: 'ID de producto requerido' };
+  }
+
   if (!files || files.length === 0) {
     return { error: 'No se proporcionaron archivos' };
   }
 
-  const supabase = await createClient();
-  const imageUrls: string[] = [];
-
   try {
-    for (const file of files) {
-      // Validar tipo de archivo
-      if (!file.type.startsWith('image/')) {
-        return { error: `El archivo ${file.name} no es una imagen válida` };
-      }
-
-      // Validar tamaño (max 5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        return { error: `El archivo ${file.name} excede el tamaño máximo de 5MB` };
-      }
-
-      // Generar nombre único para el archivo
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-      const filePath = `products/${fileName}`;
-
-      // Subir archivo a Supabase Storage
-      const { error: uploadError } = await supabase.storage
-        .from('product_images')
-        .upload(filePath, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-
-      if (uploadError) {
-        console.error('Error al subir imagen:', uploadError);
-        return { error: `No se pudo subir el archivo: ${file.name}` };
-      }
-
-      // Obtener URL pública
-      const { data: { publicUrl } } = supabase.storage
-        .from('product_images')
-        .getPublicUrl(filePath);
-
-      imageUrls.push(publicUrl);
-    }
-
+    const productsService = await getProductsService();
+    const imageUrls = await productsService.uploadImages(parseInt(productId), files);
+    
+    revalidatePath('/admin/products');
     return { success: true, urls: imageUrls };
   } catch (error) {
-    console.error('Error en uploadProductImages:', error);
+    if (isAppError(error)) {
+      return { error: error.message };
+    }
+    console.error('Error al subir imágenes:', error);
     return { error: 'Error al procesar las imágenes' };
+  }
+}
+
+/**
+ * Obtiene todos los productos con filtros y paginación
+ */
+export async function getProducts(
+  filters: ProductFilters = {}, 
+  page: number = 1, 
+  limit: number = 20
+) {
+  try {
+    const productsService = await getProductsService();
+    const result = await productsService.getAll(filters, { page, limit });
+    
+    return { 
+      products: result.products, 
+      total: result.total,
+      page: result.page,
+      totalPages: result.totalPages
+    };
+  } catch (error) {
+    if (isAppError(error)) {
+      return { error: error.message };
+    }
+    console.error('Error al obtener productos:', error);
+    return { error: 'No se pudieron obtener los productos' };
+  }
+}
+
+/**
+ * Busca productos por texto
+ */
+export async function searchProducts(query: string, limit: number = 10) {
+  try {
+    const productsService = await getProductsService();
+    const products = await productsService.search(query, limit);
+    
+    return { products };
+  } catch (error) {
+    if (isAppError(error)) {
+      return { error: error.message };
+    }
+    console.error('Error al buscar productos:', error);
+    return { error: 'Error al buscar productos' };
+  }
+}
+
+/**
+ * Actualiza el stock de un producto
+ */
+export async function updateProductStock(productId: number, quantity: number) {
+  try {
+    const productsService = await getProductsService();
+    const product = await productsService.updateStock(productId, quantity);
+    
+    revalidatePath('/admin/products');
+    return { success: true, product };
+  } catch (error) {
+    if (isAppError(error)) {
+      return { error: error.message };
+    }
+    console.error('Error al actualizar stock:', error);
+    return { error: 'Error al actualizar el stock' };
   }
 }

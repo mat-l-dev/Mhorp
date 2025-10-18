@@ -14,16 +14,7 @@ import { useRouter } from 'next/navigation';
 import { useDropzone } from 'react-dropzone';
 import { X, Upload, Image as ImageIcon } from 'lucide-react';
 import Image from 'next/image';
-
-type Product = {
-  id: number;
-  name: string;
-  description: string | null;
-  price: string;
-  stock: number | null;
-  categoryId: number | null;
-  images: string[] | null;
-};
+import type { ProductWithRelations } from '@mhorp/services';
 
 type Category = {
   id: number;
@@ -41,7 +32,7 @@ function SubmitButton({ isUploading }: { isUploading: boolean }) {
 }
 
 interface ProductFormProps {
-  product?: Product;
+  product?: ProductWithRelations;
   categories?: Category[];
 }
 
