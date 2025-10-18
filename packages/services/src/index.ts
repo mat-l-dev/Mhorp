@@ -19,6 +19,17 @@ export type {
   UploadResult,
 } from './storage/storage.service';
 
+export { ProductsService } from './products/products.service';
+export type {
+  Product,
+  ProductWithRelations,
+  CreateProductData,
+  UpdateProductData,
+  ProductFilters,
+  PaginationOptions,
+  PaginatedProducts,
+} from './products/products.service';
+
 // Exportar errores
 export {
   AppError,
@@ -44,7 +55,7 @@ export type {
   SuccessResult,
   ErrorResult,
   Result,
-  PaginationOptions,
+  PaginationOptions as CommonPaginationOptions,
   PaginatedResult,
   ExecutionContext,
 } from './common/types';

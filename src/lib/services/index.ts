@@ -3,8 +3,8 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { db } from '@/lib/db';
-import { users, orders, orderItems, paymentProofs } from '@/lib/db/schema';
-import { AuthService, OrdersService, StorageService } from '@mhorp/services';
+import { users, orders, orderItems, paymentProofs, products } from '@/lib/db/schema';
+import { AuthService, OrdersService, StorageService, ProductsService } from '@mhorp/services';
 
 /**
  * Obtiene una instancia del AuthService
@@ -38,6 +38,22 @@ export async function getOrdersService() {
     orders,
     orderItems,
     paymentProofs,
+    storageService
+  );
+}
+
+/**
+ * Obtiene una instancia del ProductsService
+ * IMPORTANTE: Debe ser llamado dentro de Server Actions o Server Components
+ */
+export async function getProductsService() {
+  const supabase = await createClient();
+  const authService = new AuthService(supabase, db, users);
+  const storageService = new StorageService(supabase);
+  return new ProductsService(
+    db,
+    authService,
+    products,
     storageService
   );
 }
