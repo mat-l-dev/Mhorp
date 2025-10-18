@@ -4,6 +4,7 @@
 import type { DrizzleClient } from '../common/types';
 import type { AuthService } from '../auth/auth.service';
 import type { StorageService } from '../storage/storage.service';
+import type { CacheService } from '../cache/cache.service';
 import {
   NotFoundError,
   ValidationError,
@@ -109,7 +110,8 @@ export class ProductsService {
     private auth: AuthService,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private productsTable: any,
-    private storage?: StorageService
+    private storage?: StorageService,
+    private cache?: CacheService
   ) {}
 
   /**
@@ -204,6 +206,13 @@ export class ProductsService {
         .where(eq(this.productsTable.id, productId))
         .returning();
 
+      // Invalidar caché del producto
+      if (this.cache) {
+        await this.cache.invalidate(`product:${productId}`);
+        // También invalidar listados que puedan incluir este producto
+        await this.cache.invalidatePattern('products:list:*');
+      }
+
       return product as Product;
     } catch (error) {
       console.error('Error updating product:', error);
@@ -228,6 +237,12 @@ export class ProductsService {
       await this.db
         .delete(this.productsTable)
         .where(eq(this.productsTable.id, productId));
+
+      // Invalidar caché
+      if (this.cache) {
+        await this.cache.invalidate(`product:${productId}`);
+        await this.cache.invalidatePattern('products:list:*');
+      }
     } catch (error) {
       console.error('Error deleting product:', error);
       throw new BusinessError('No se pudo eliminar el producto');
@@ -238,6 +253,14 @@ export class ProductsService {
    * Obtiene un producto por ID (público)
    */
   async getById(productId: number): Promise<ProductWithRelations | null> {
+    // Intentar obtener del caché
+    if (this.cache) {
+      const cached = await this.cache.get<ProductWithRelations>(`product:${productId}`);
+      if (cached) {
+        return cached;
+      }
+    }
+
     try {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const product = await (this.db as any).query.products.findFirst({
@@ -253,7 +276,14 @@ export class ProductsService {
         },
       });
 
-      return product as ProductWithRelations | null;
+      const result = product as ProductWithRelations | null;
+
+      // Guardar en caché si existe
+      if (result && this.cache) {
+        await this.cache.set(`product:${productId}`, result, { ttl: 300 }); // 5 minutos
+      }
+
+      return result;
     } catch (error) {
       console.error('Error getting product by id:', error);
       return null;

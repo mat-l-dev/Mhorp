@@ -30,6 +30,16 @@ export type {
   PaginatedProducts,
 } from './products/products.service';
 
+// Exportar Cache
+export {
+  CacheService,
+  createCacheService,
+  MemoryCacheClient,
+  RedisCacheClient,
+  createRedisClient,
+} from './cache';
+export type { CacheClient, CacheOptions } from './cache';
+
 // Exportar errores
 export {
   AppError,
