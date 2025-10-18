@@ -3,11 +3,21 @@
 import { db } from '@/lib/db';
 import { orders, orderItems, products, reviews, wishlistItems, users, coupons } from '@/lib/db/schema';
 import { sql, eq, desc, and, gte, count } from 'drizzle-orm';
+import { getCached, analyticsCache } from '@/lib/cache';
 
 /**
- * Obtiene métricas generales del negocio
+ * Obtiene métricas generales del negocio (con caché)
  */
 export async function getAnalyticsMetrics() {
+  return analyticsCache.metrics(async () => {
+    return _getAnalyticsMetricsUncached();
+  });
+}
+
+/**
+ * Versión sin caché de getAnalyticsMetrics
+ */
+async function _getAnalyticsMetricsUncached() {
   try {
     // Total de ventas (excluyendo canceladas)
     const totalRevenueResult = await db
@@ -112,9 +122,18 @@ export async function getAnalyticsMetrics() {
 }
 
 /**
- * Obtiene los productos más vendidos
+ * Obtiene los productos más vendidos (con caché)
  */
 export async function getTopSellingProducts(limit: number = 5) {
+  return analyticsCache.topProducts('selling', async () => {
+    return _getTopSellingProductsUncached(limit);
+  });
+}
+
+/**
+ * Versión sin caché de getTopSellingProducts
+ */
+async function _getTopSellingProductsUncached(limit: number = 5) {
   try {
     const topProducts = await db
       .select({
@@ -144,9 +163,18 @@ export async function getTopSellingProducts(limit: number = 5) {
 }
 
 /**
- * Obtiene productos más agregados a wishlist
+ * Obtiene productos más agregados a wishlist (con caché)
  */
 export async function getMostWishedProducts(limit: number = 5) {
+  return analyticsCache.topProducts('wished', async () => {
+    return _getMostWishedProductsUncached(limit);
+  });
+}
+
+/**
+ * Versión sin caché de getMostWishedProducts
+ */
+async function _getMostWishedProductsUncached(limit: number = 5) {
   try {
     const mostWished = await db
       .select({
@@ -172,9 +200,18 @@ export async function getMostWishedProducts(limit: number = 5) {
 }
 
 /**
- * Obtiene productos mejor calificados
+ * Obtiene productos mejor calificados (con caché)
  */
 export async function getTopRatedProducts(limit: number = 5) {
+  return analyticsCache.topProducts('rated', async () => {
+    return _getTopRatedProductsUncached(limit);
+  });
+}
+
+/**
+ * Versión sin caché de getTopRatedProducts
+ */
+async function _getTopRatedProductsUncached(limit: number = 5) {
   try {
     const topRated = await db
       .select({
@@ -203,9 +240,18 @@ export async function getTopRatedProducts(limit: number = 5) {
 }
 
 /**
- * Obtiene ventas de los últimos 30 días
+ * Obtiene ventas de los últimos 30 días (con caché)
  */
 export async function getRecentSales(days: number = 30) {
+  return analyticsCache.recentSales(days, async () => {
+    return _getRecentSalesUncached(days);
+  });
+}
+
+/**
+ * Versión sin caché de getRecentSales
+ */
+async function _getRecentSalesUncached(days: number = 30) {
   try {
     const thirtyDaysAgo = new Date();
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - days);

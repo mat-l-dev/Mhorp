@@ -28,6 +28,16 @@ Este documento lista todas las tareas que **TÚ** debes hacer manualmente para c
 4. Click en **Run**
 5. ✅ Verifica que aparezca: "Success. No rows returned"
 
+### Migración 3: Tabla de Wishlists Compartidas
+**Archivo:** `migrations/007_add_shared_wishlists.sql`
+
+**Pasos:**
+1. En el mismo SQL Editor de Supabase
+2. Click en **New Query**
+3. Copia y pega el contenido completo de `migrations/007_add_shared_wishlists.sql`
+4. Click en **Run**
+5. ✅ Verifica que aparezca: "Success. No rows returned"
+
 ### Verificación
 Para confirmar que las migraciones se aplicaron correctamente:
 ```sql
@@ -36,6 +46,9 @@ SELECT * FROM price_history LIMIT 5;
 
 -- Verifica que existe la columna is_verified en reviews
 SELECT id, rating, is_verified FROM reviews LIMIT 5;
+
+-- Verifica que existe la tabla shared_wishlists
+SELECT * FROM shared_wishlists LIMIT 5;
 ```
 
 ---
@@ -61,6 +74,20 @@ CRON_SECRET=tu_secreto_super_seguro_aqui
 # URL DEL SITIO (para links en emails)
 # ============================================
 NEXT_PUBLIC_SITE_URL=http://localhost:3000
+
+# ============================================
+# VERCEL KV (REDIS CACHE)
+# ============================================
+KV_URL=redis://localhost:6379  # Para desarrollo local
+# O usa las variables de Vercel KV:
+# KV_REST_API_URL=https://xxxxx.kv.vercel-storage.com
+# KV_REST_API_TOKEN=xxxxxxxxxxxxx
+# KV_REST_API_READ_ONLY_TOKEN=xxxxxxxxxxxxx
+
+# ============================================
+# ADMIN SECRET (API de Cache)
+# ============================================
+ADMIN_SECRET=tu_secreto_para_admin_api
 ```
 
 ### Generar CRON_SECRET
@@ -112,6 +139,10 @@ Copia el resultado y úsalo como valor de `CRON_SECRET`.
 | `NEXT_PUBLIC_SITE_URL` | `https://tudominio.vercel.app` | Production |
 | `NEXT_PUBLIC_SITE_URL` | `https://preview-url.vercel.app` | Preview |
 | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | Development |
+| `KV_REST_API_URL` | (auto-generada por Vercel KV) | Production, Preview, Development |
+| `KV_REST_API_TOKEN` | (auto-generada por Vercel KV) | Production, Preview, Development |
+| `KV_REST_API_READ_ONLY_TOKEN` | (auto-generada por Vercel KV) | Production, Preview, Development |
+| `ADMIN_SECRET` | (secreto para API de cache) | Production, Preview, Development |
 
 5. Click en **Save** para cada una
 
@@ -265,15 +296,22 @@ curl -X GET http://localhost:3000/api/cron/price-drop \
 - [ ] `EMAIL_FROM` configurado
 - [ ] `CRON_SECRET` configurado
 - [ ] `NEXT_PUBLIC_SITE_URL` configurado
+- [ ] `KV_*` configuradas (Vercel KV o Redis local)
+- [ ] `ADMIN_SECRET` configurado
 
 #### Variables de Entorno (Vercel)
 - [ ] Todas las variables agregadas en Vercel
+- [ ] Vercel KV database creada y conectada
 - [ ] Re-deploy realizado después de agregar variables
 
 #### Funcionalidades
 - [ ] Analytics Dashboard muestra datos correctamente
+- [ ] Cache funciona (ver logs CACHE HIT/MISS)
+- [ ] API de cache responde con stats
 - [ ] Botones de compartir funcionan en página de producto
 - [ ] Badge de "Compra Verificada" aparece en reseñas
+- [ ] Wishlist compartida funciona (crear y ver públicamente)
+- [ ] Imágenes tienen blur placeholder y lazy loading
 - [ ] Cron job responde correctamente (prueba manual)
 - [ ] Emails se envían (o simulan si no hay Resend)
 
@@ -284,6 +322,117 @@ curl -X GET http://localhost:3000/api/cron/price-drop \
 
 ---
 
+## 🚀 7. CONFIGURAR VERCEL KV (REDIS CACHE)
+
+### Crear Base de Datos KV en Vercel
+1. Ve a [vercel.com/dashboard](https://vercel.com/dashboard)
+2. Selecciona tu proyecto **Mhorp**
+3. Click en **Storage** (menú lateral)
+4. Click en **Create Database**
+5. Selecciona **KV (Redis)**
+6. Dale un nombre: `mhor-cache` o similar
+7. Elige la región más cercana a tu deployment
+8. Click en **Create**
+
+### Conectar a tu Proyecto
+1. En la página de tu database KV
+2. Click en **Connect Project**
+3. Selecciona tu proyecto **Mhorp**
+4. Click en **Connect**
+5. ✅ Las variables `KV_*` se agregan automáticamente
+
+### Verificar Variables
+1. Ve a **Settings** > **Environment Variables**
+2. Deberías ver automáticamente:
+   - `KV_URL`
+   - `KV_REST_API_URL`
+   - `KV_REST_API_TOKEN`
+   - `KV_REST_API_READ_ONLY_TOKEN`
+
+### Desarrollo Local
+Para usar cache localmente:
+
+**Opción 1: Redis Local (Recomendado)**
+```bash
+# Con Docker
+docker run -d -p 6379:6379 redis:alpine
+
+# O con WSL/Linux
+sudo apt-get install redis-server
+redis-server
+```
+
+**Opción 2: Usar Vercel KV en Local**
+```bash
+# Instala Vercel CLI
+npm i -g vercel
+
+# Descarga las variables de entorno
+vercel env pull .env.local
+
+# Las variables KV_* se descargarán automáticamente
+```
+
+### Generar ADMIN_SECRET
+Este secret protege la API de cache (`/api/cache`):
+
+```bash
+# Con OpenSSL
+openssl rand -base64 32
+
+# O con Node.js
+node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+```
+
+Agrega el resultado en:
+- `.env.local` para desarrollo
+- Vercel Environment Variables para producción
+
+### Probar Cache
+```bash
+# 1. Inicia el servidor
+pnpm run dev
+
+# 2. Ve al Analytics Dashboard
+open http://localhost:3000/admin/analytics
+
+# 3. Revisa los logs - Primera carga debe mostrar:
+[CACHE MISS] analytics:metrics
+[CACHE MISS] analytics:top-products:selling
+
+# 4. Recarga la página - Segunda carga debe mostrar:
+[CACHE HIT] analytics:metrics  ⚡
+[CACHE HIT] analytics:top-products:selling  ⚡
+
+# 5. Prueba la API de cache
+curl -X GET http://localhost:3000/api/cache \
+  -H "Authorization: Bearer $ADMIN_SECRET"
+```
+
+### Limpiar Cache Manualmente
+```bash
+# Limpiar todo el cache
+curl -X POST http://localhost:3000/api/cache \
+  -H "Authorization: Bearer $ADMIN_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "clear-all"}'
+
+# Limpiar solo analytics
+curl -X POST http://localhost:3000/api/cache \
+  -H "Authorization: Bearer $ADMIN_SECRET" \
+  -H "Content-Type: application/json" \
+  -d '{"action": "clear-tag", "tag": "analytics"}'
+```
+
+### Documentación Completa
+📖 Ver `CACHE_SYSTEM.md` para:
+- Guía completa de uso
+- Estrategias de TTL
+- Mejores prácticas
+- Troubleshooting avanzado
+
+---
+
 ## 🆘 TROUBLESHOOTING
 
 ### Error: "price_history table does not exist"
@@ -291,6 +440,16 @@ curl -X GET http://localhost:3000/api/cron/price-drop \
 
 ### Error: "is_verified column does not exist"
 **Solución:** Ejecuta la migración `006_add_reviews_is_verified.sql` en Supabase.
+
+### Error: "shared_wishlists table does not exist"
+**Solución:** Ejecuta la migración `007_add_shared_wishlists.sql` en Supabase.
+
+### Error: "Cannot connect to Redis" / Cache no funciona
+**Solución:**
+1. Verifica que Vercel KV esté creado y conectado al proyecto
+2. En local, verifica que Redis esté corriendo: `redis-cli ping` (debe retornar "PONG")
+3. Verifica que las variables `KV_*` estén en `.env.local`
+4. Reinicia el servidor de desarrollo
 
 ### Cron job retorna 401 Unauthorized
 **Solución:** Verifica que el header `Authorization: Bearer` tenga el mismo valor que `CRON_SECRET`.
