@@ -198,6 +198,69 @@ Copia el resultado y úsalo como valor de `CRON_SECRET`.
 | `NEXT_PUBLIC_SITE_URL` | `http://localhost:3000` | Development |
 | `KV_REST_API_URL` | (auto-generada por Vercel KV) | Production, Preview, Development |
 | `KV_REST_API_TOKEN` | (auto-generada por Vercel KV) | Production, Preview, Development |
+| `ADMIN_SECRET` | (el secret que generaste) | Production, Preview, Development |
+
+5. Click en **Save** para cada variable
+
+### Opción 2: Desde CLI (más rápido)
+```bash
+# Instalar Vercel CLI (si no lo tienes)
+npm i -g vercel
+
+# Login
+vercel login
+
+# Link al proyecto
+vercel link
+
+# Agregar variables
+vercel env add RESEND_API_KEY
+vercel env add EMAIL_FROM
+vercel env add CRON_SECRET
+vercel env add NEXT_PUBLIC_SITE_URL
+vercel env add ADMIN_SECRET
+```
+
+---
+
+## 🔐 4. CONFIGURAR GITHUB SECRETS (CI/CD)
+
+Para que el CI/CD de GitHub Actions funcione sin errores, necesitas agregar secrets al repositorio:
+
+### Pasos:
+1. Ve a tu repositorio en GitHub
+2. Click en **Settings** (del repositorio)
+3. En el sidebar izquierdo, click en **Secrets and variables** > **Actions**
+4. Click en **New repository secret**
+5. Agrega cada uno:
+
+| Secret Name | Value | Descripción |
+|-------------|-------|-------------|
+| `NEXT_PUBLIC_SUPABASE_URL` | Tu URL de Supabase | URL pública de tu proyecto |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Tu Anon Key de Supabase | Key anónima pública |
+| `DATABASE_URL` | `postgresql://user:pass@host:5432/db` | Connection string de Supabase |
+| `RESEND_API_KEY` | `re_xxxxx` | API key de Resend |
+
+**NOTA:** Si no quieres que el CI/CD falle en PRs:
+- Los secrets ya están configurados con valores de fallback en `.github/workflows/ci.yml`
+- Si hay secrets faltantes, usará valores mock que permiten el build
+- En producción (Vercel), sí deben estar todos configurados
+
+### Verificar CI/CD
+Después de agregar los secrets:
+1. Haz un commit pequeño y push
+2. Ve a **Actions** en GitHub
+3. Verifica que el workflow "Mhorp CI/CD" pase ✅
+
+---
+
+## 📱 5. GENERAR ICONOS PWA
+
+La PWA necesita 8 iconos en diferentes tamaños. Tienes dos opciones:
+
+### Opción 1: Usar un generador online (RECOMENDADO)
+1. Ve a [realfavicongenerator.net](https://realfavicongenerator.net/) o [pwa-asset-generator](https://github.com/elegantapp/pwa-asset-generator)
+2. Sube tu logo (debe ser cuadrado, mínimo 512x512px)
 | `KV_REST_API_READ_ONLY_TOKEN` | (auto-generada por Vercel KV) | Production, Preview, Development |
 | `ADMIN_SECRET` | (secreto para API de cache) | Production, Preview, Development |
 
@@ -550,6 +613,109 @@ Si no tienes Vercel Pro, puedes usar:
 ### Backup de Variables
 Guarda tus variables en un lugar seguro (1Password, Bitwarden, etc).
 **NUNCA** las commits al repositorio.
+
+---
+
+## 🧪 6. TESTING DEL SISTEMA DE REFERIDOS
+
+Una vez ejecutada la migración 009, prueba el flujo completo:
+
+### Test 1: Generar código
+1. Inicia sesión con tu cuenta
+2. Ve a `/account/referrals`
+3. ✅ Verifica que se muestre tu código único (8 caracteres)
+4. ✅ Copia el link de referido
+
+### Test 2: Registro con código
+1. Abre el link en navegador incógnito
+2. ✅ Verifica que la URL tenga `?ref=CODIGO`
+3. Ve a `/signup`
+4. ✅ El código debe aparecer auto-llenado
+5. ✅ Debe mostrar mensaje de validación verde
+6. Registra una nueva cuenta
+7. ✅ Debe aparecer toast con cupón de bienvenida
+
+### Test 3: Verificar en base de datos
+```sql
+-- Ver el referido creado
+SELECT * FROM user_referrals 
+WHERE referral_code = 'TU_CODIGO'
+ORDER BY created_at DESC 
+LIMIT 5;
+
+-- Ver stats actualizadas
+SELECT * FROM referral_stats 
+WHERE referral_code = 'TU_CODIGO';
+
+-- Ver cupón creado
+SELECT * FROM coupons 
+WHERE code LIKE 'BIENVENIDA%'
+ORDER BY created_at DESC 
+LIMIT 1;
+```
+
+### Test 4: Primera compra
+1. Inicia sesión con la cuenta nueva
+2. Agrega productos al carrito
+3. En checkout, aplica el cupón BIENVENIDA
+4. ✅ Verifica que se aplique el 10% de descuento
+5. Completa la compra
+6. ✅ El referido debe cambiar a status='completed'
+
+### Test 5: Verificar recompensas
+```sql
+-- El referido debe tener status='rewarded'
+SELECT status, referrer_reward_points 
+FROM user_referrals 
+WHERE referred_user_id = 'ID_NUEVO_USUARIO';
+-- Resultado: status='rewarded', referrer_reward_points=200
+
+-- Stats del que refirió actualizadas
+SELECT 
+  total_referrals,
+  completed_referrals,
+  total_points_earned
+FROM referral_stats 
+WHERE referral_code = 'TU_CODIGO';
+```
+
+---
+
+## ⚠️ ERRORES ESPERADOS (NO SON PROBLEMAS)
+
+### Durante `pnpm build` local:
+
+#### 1. `[CACHE ERROR] Missing required environment variables KV_REST_API_URL`
+**¿Es problema?** ❌ NO  
+**Explicación:** No tienes Redis configurado localmente, es normal. El cache simplemente no se usará durante el build.  
+**Solución:** Ignorar o configurar Vercel KV para desarrollo local.
+
+#### 2. `Error al obtener carrito: Dynamic server usage: Route couldn't be rendered statically`
+**¿Es problema?** ❌ NO  
+**Explicación:** Páginas que usan `cookies()` no se pueden generar estáticamente. Next.js las genera dinámicamente al momento de la petición.  
+**Solución:** No hacer nada, es el comportamiento esperado.
+
+#### 3. `prettier can't be external` (warning de Turbopack)
+**¿Es problema?** ❌ NO  
+**Explicación:** Warning de Turbopack sobre @react-email/render.  
+**Solución:** Ignorar, no afecta la funcionalidad.
+
+#### 4. Warnings de ESLint sobre variables no usadas
+**¿Es problema?** ⚠️ MEJORA (no crítico)  
+**Explicación:** Hay variables declaradas que no se usan.  
+**Solución:** Opcional - limpiar imports no usados en el futuro.
+
+### Durante CI/CD en GitHub Actions:
+
+#### 1. `ECONNREFUSED` al ejecutar queries
+**¿Es problema?** ❌ NO (en CI)  
+**Explicación:** No hay base de datos PostgreSQL en el runner de GitHub Actions.  
+**Solución:** El build pasa igual porque las páginas se generan dinámicamente en runtime.
+
+#### 2. `Context access might be invalid` en ci.yml
+**¿Es problema?** ❌ NO  
+**Explicación:** Warning del linter de GitHub Actions sobre secrets que pueden no existir.  
+**Solución:** Ya configurado con fallbacks. Si agregas los secrets, el warning persiste pero todo funciona.
 
 ---
 
