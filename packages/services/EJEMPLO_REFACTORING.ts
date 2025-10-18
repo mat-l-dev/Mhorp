@@ -196,10 +196,10 @@ export async function approvePayment(orderId: string) {
 /**
  * Rechaza un pago (admin)
  */
-export async function rejectPayment(orderId: string, reason?: string) {
+export async function rejectPayment(orderId: string, proofId?: number, reason?: string) {
   try {
     const ordersService = await getOrdersService();
-    await ordersService.rejectPayment(orderId, reason);
+    await ordersService.rejectPayment(orderId, proofId, reason);
 
     revalidatePath('/admin/orders');
     revalidatePath(`/orders/${orderId}`);

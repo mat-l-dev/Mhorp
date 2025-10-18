@@ -46,13 +46,15 @@ export interface CreateOrderData {
  * Interfaz para el resultado de una orden
  */
 export interface Order {
-  id: string;
+  id: number;
   userId: string;
   total: string;
   shippingAddress: string;
   shippingCity: string;
+  shippingPostalCode?: string | null;
   shippingPhone: string;
   status: OrderStatus;
+  paymentProofUrl?: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -63,7 +65,7 @@ export interface Order {
 export interface OrderWithDetails extends Order {
   items: Array<{
     id: number;
-    orderId: string;
+    orderId: number;
     productId: number;
     quantity: number;
     priceAtPurchase: string;
@@ -77,10 +79,18 @@ export interface OrderWithDetails extends Order {
   }>;
   paymentProofs?: Array<{
     id: number;
-    orderId: string;
+    orderId: number;
+    userId: string;
     filePath: string;
+    status: 'pending_review' | 'approved' | 'rejected';
+    adminNotes?: string | null;
     uploadedAt: Date;
   }>;
+  user?: {
+    id: string;
+    email: string;
+    name?: string | null;
+  };
 }
 
 /**
@@ -165,23 +175,36 @@ export class OrdersService {
   /**
    * Obtiene una orden por ID
    */
-  async getById(orderId: string): Promise<OrderWithDetails> {
+  /**
+   * Obtiene una orden por ID con todos sus detalles
+   */
+  async getById(orderId: number | string): Promise<OrderWithDetails> {
     const user = await this.auth.getCurrentUser();
 
     if (!user) {
       throw new UnauthorizedError();
     }
 
-    const result = await this.db
-      .select()
-      .from(this.ordersTable)
-      .where(eq(this.ordersTable.id, orderId))
-      .limit(1);
+    // Convertir a number si viene como string
+    const orderIdNum = typeof orderId === 'string' ? parseInt(orderId, 10) : orderId;
 
-    const order = result[0];
+    // Usar db.query para obtener orden con relaciones
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const order = await (this.db as any).query.orders.findFirst({
+      where: (orders: any, { eq }: any) => eq(orders.id, orderIdNum),
+      with: {
+        items: {
+          with: {
+            product: true,
+          },
+        },
+        paymentProofs: true,
+        user: true,
+      },
+    });
 
     if (!order) {
-      throw new NotFoundError('Orden', orderId);
+      throw new NotFoundError('Orden', orderId.toString());
     }
 
     // Verificar permisos: solo el dueño o admin pueden ver la orden
@@ -190,8 +213,6 @@ export class OrdersService {
       throw new ForbiddenError('No tienes permiso para ver esta orden');
     }
 
-    // TODO: Cargar items y payment proofs con joins
-    // Por ahora retornamos la orden básica
     return order as OrderWithDetails;
   }
 
@@ -213,13 +234,20 @@ export class OrdersService {
       await this.auth.requireAdmin();
     }
 
-    const orders = await this.db
-      .select()
-      .from(this.ordersTable)
-      .where(eq(this.ordersTable.userId, targetUserId))
-      .orderBy(desc(this.ordersTable.createdAt));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const orders = await (this.db as any).query.orders.findMany({
+      where: (orders: any, { eq }: any) => eq(orders.userId, targetUserId),
+      orderBy: (orders: any, { desc }: any) => [desc(orders.createdAt)],
+      with: {
+        items: {
+          with: {
+            product: true,
+          },
+        },
+        paymentProofs: true,
+      },
+    });
 
-    // TODO: Cargar items y payment proofs
     return orders as OrderWithDetails[];
   }
 
@@ -227,22 +255,25 @@ export class OrdersService {
    * Actualiza el estado de una orden (solo admin)
    */
   async updateStatus(
-    orderId: string,
+    orderId: string | number,
     status: OrderStatus,
     _adminNotes?: string // Prefix con _ para indicar que está intencionalmente sin usar
   ): Promise<void> {
     // Verificar que sea admin
     await this.auth.requireAdmin();
 
+    // Convertir a number si viene como string
+    const orderIdNum = typeof orderId === 'string' ? parseInt(orderId, 10) : orderId;
+
     // Verificar que la orden existe
     const orderResult = await this.db
       .select()
       .from(this.ordersTable)
-      .where(eq(this.ordersTable.id, orderId))
+      .where(eq(this.ordersTable.id, orderIdNum))
       .limit(1);
 
     if (!orderResult[0]) {
-      throw new NotFoundError('Orden', orderId);
+      throw new NotFoundError('Orden', orderId.toString());
     }
 
     // Validar transiciones de estado
@@ -260,7 +291,7 @@ export class OrdersService {
         status,
         updatedAt: new Date(),
       })
-      .where(eq(this.ordersTable.id, orderId));
+      .where(eq(this.ordersTable.id, orderIdNum));
   }
 
   /**
@@ -276,19 +307,41 @@ export class OrdersService {
   }
 
   /**
-   * Aprueba el pago de una orden (admin)
+   * Aprueba el pago de una orden y su comprobante (admin)
    */
-  async approvePayment(orderId: string): Promise<void> {
+  async approvePayment(orderId: string | number, proofId?: number): Promise<void> {
     await this.auth.requireAdmin();
 
+    // Si se proporciona proofId, actualizar el estado del comprobante
+    if (proofId) {
+      await this.db
+        .update(this.paymentProofsTable)
+        .set({ status: 'approved' })
+        .where(eq(this.paymentProofsTable.id, proofId));
+    }
+
+    // Actualizar el estado de la orden a confirmado
     await this.updateStatus(orderId, 'payment_confirmed');
+
+    // TODO: Enviar email de confirmación al cliente
   }
 
   /**
-   * Rechaza el pago de una orden (admin)
+   * Rechaza el pago de una orden y su comprobante (admin)
    */
-  async rejectPayment(orderId: string, reason?: string): Promise<void> {
+  async rejectPayment(orderId: string | number, proofId?: number, reason?: string): Promise<void> {
     await this.auth.requireAdmin();
+
+    // Si se proporciona proofId, actualizar el estado del comprobante
+    if (proofId) {
+      await this.db
+        .update(this.paymentProofsTable)
+        .set({ 
+          status: 'rejected',
+          adminNotes: reason,
+        })
+        .where(eq(this.paymentProofsTable.id, proofId));
+    }
 
     // Volver a estado de espera de pago
     await this.updateStatus(orderId, 'awaiting_payment');
@@ -321,7 +374,7 @@ export class OrdersService {
   /**
    * Sube un comprobante de pago para una orden
    */
-  async uploadProof(orderId: string, file: File): Promise<{ path: string; signedUrl?: string }> {
+  async uploadProof(orderId: string | number, file: File): Promise<{ path: string; signedUrl?: string }> {
     const user = await this.auth.getCurrentUser();
 
     if (!user) {
@@ -332,17 +385,20 @@ export class OrdersService {
       throw new BusinessError('StorageService no configurado');
     }
 
+    // Convertir a number si viene como string
+    const orderIdNum = typeof orderId === 'string' ? parseInt(orderId, 10) : orderId;
+
     // Verificar que la orden existe y pertenece al usuario
     const orderResult = await this.db
       .select()
       .from(this.ordersTable)
-      .where(eq(this.ordersTable.id, orderId))
+      .where(eq(this.ordersTable.id, orderIdNum))
       .limit(1);
 
     const order = orderResult[0];
 
     if (!order) {
-      throw new NotFoundError('Orden', orderId);
+      throw new NotFoundError('Orden', orderId.toString());
     }
 
     // Verificar permisos
@@ -354,13 +410,13 @@ export class OrdersService {
     // Subir archivo usando StorageService
     const uploadResult = await this.storage.uploadPaymentProof(
       user.id,
-      orderId,
+      orderIdNum.toString(),
       file
     );
 
     // Crear registro en payment_proofs
     await this.db.insert(this.paymentProofsTable).values({
-      orderId,
+      orderId: orderIdNum,
       userId: user.id,
       filePath: uploadResult.path,
     });
@@ -372,7 +428,7 @@ export class OrdersService {
         status: 'payment_pending_verification',
         updatedAt: new Date(),
       })
-      .where(eq(this.ordersTable.id, orderId));
+      .where(eq(this.ordersTable.id, orderIdNum));
 
     return {
       path: uploadResult.path,
@@ -383,14 +439,26 @@ export class OrdersService {
   /**
    * Obtiene todas las órdenes pendientes de verificación (admin)
    */
+  /**
+   * Obtiene órdenes pendientes de verificación de pago (admin)
+   */
   async getPendingVerification(): Promise<OrderWithDetails[]> {
     await this.auth.requireAdmin();
 
-    const orders = await this.db
-      .select()
-      .from(this.ordersTable)
-      .where(eq(this.ordersTable.status, 'payment_pending_verification'))
-      .orderBy(desc(this.ordersTable.createdAt));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const orders = await (this.db as any).query.orders.findMany({
+      where: (orders: any, { eq }: any) => eq(orders.status, 'payment_pending_verification'),
+      orderBy: (orders: any, { desc }: any) => [desc(orders.createdAt)],
+      with: {
+        items: {
+          with: {
+            product: true,
+          },
+        },
+        paymentProofs: true,
+        user: true,
+      },
+    });
 
     return orders as OrderWithDetails[];
   }
