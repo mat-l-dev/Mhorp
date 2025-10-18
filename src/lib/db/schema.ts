@@ -269,3 +269,90 @@ export const sharedWishlistsRelations = relations(sharedWishlists, ({ one }) => 
     references: [users.id],
   }),
 }));
+
+// ============================================
+// SISTEMA DE REFERIDOS
+// ============================================
+
+// Enum para el estado de los referidos
+export const referralStatusEnum = pgEnum('referral_status', ['pending', 'completed', 'rewarded']);
+
+// Tabla de referidos
+export const userReferrals = pgTable('user_referrals', {
+  id: serial('id').primaryKey(),
+  
+  // Usuario que refiere (el que invita)
+  referrerUserId: text('referrer_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  
+  // Usuario referido (el nuevo que se registra)
+  referredUserId: text('referred_user_id').notNull().references(() => users.id, { onDelete: 'cascade' }).unique(),
+  
+  // Código de referido usado
+  referralCode: text('referral_code').notNull(),
+  
+  // Estado del referido
+  status: text('status').notNull().default('pending'), // 'pending' | 'completed' | 'rewarded'
+  
+  // Orden de la primera compra (cuando se completa)
+  firstOrderId: integer('first_order_id').references(() => orders.id, { onDelete: 'set null' }),
+  
+  // Valor de la primera compra
+  firstOrderAmount: decimal('first_order_amount', { precision: 10, scale: 2 }),
+  
+  // Recompensas entregadas
+  referrerRewardPoints: integer('referrer_reward_points').default(0),
+  referredRewardCoupon: text('referred_reward_coupon'), // código del cupón dado al nuevo usuario
+  
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  completedAt: timestamp('completed_at'), // cuando hizo la primera compra
+  rewardedAt: timestamp('rewarded_at'), // cuando se dieron las recompensas
+});
+
+// Tabla de estadísticas de referidos por usuario
+export const referralStats = pgTable('referral_stats', {
+  userId: text('user_id').primaryKey().references(() => users.id, { onDelete: 'cascade' }),
+  
+  // Código único de referido del usuario
+  referralCode: text('referral_code').notNull().unique(),
+  
+  // Contadores
+  totalReferrals: integer('total_referrals').default(0).notNull(), // Total de personas que se registraron
+  completedReferrals: integer('completed_referrals').default(0).notNull(), // Cuántos hicieron su primera compra
+  pendingReferrals: integer('pending_referrals').default(0).notNull(), // Cuántos están pendientes de comprar
+  
+  // Recompensas ganadas
+  totalPointsEarned: integer('total_points_earned').default(0).notNull(), // Puntos ganados por referidos
+  totalRevenueGenerated: decimal('total_revenue_generated', { precision: 10, scale: 2 }).default('0').notNull(), // Revenue generado por referidos
+  
+  // Mejor streak
+  bestMonthReferrals: integer('best_month_referrals').default(0),
+  bestMonthDate: timestamp('best_month_date'),
+  
+  // Timestamps
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+  updatedAt: timestamp('updated_at').defaultNow().notNull(),
+});
+
+// Relaciones de referidos
+export const userReferralsRelations = relations(userReferrals, ({ one }) => ({
+  referrer: one(users, {
+    fields: [userReferrals.referrerUserId],
+    references: [users.id],
+  }),
+  referred: one(users, {
+    fields: [userReferrals.referredUserId],
+    references: [users.id],
+  }),
+  firstOrder: one(orders, {
+    fields: [userReferrals.firstOrderId],
+    references: [orders.id],
+  }),
+}));
+
+export const referralStatsRelations = relations(referralStats, ({ one }) => ({
+  user: one(users, {
+    fields: [referralStats.userId],
+    references: [users.id],
+  }),
+}));

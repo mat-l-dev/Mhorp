@@ -50,6 +50,28 @@ Este documento lista todas las tareas que **TÚ** debes hacer manualmente para c
 
 **NOTA:** Esta migración crea 35+ indexes para optimizar performance. Es normal que tarde un poco más que las anteriores.
 
+### Migración 5: Sistema de Referidos 🤝 **[NUEVO]**
+**Archivo:** `migrations/009_add_referral_system.sql`
+
+**Pasos:**
+1. En el mismo SQL Editor de Supabase
+2. Click en **New Query**
+3. Copia y pega el contenido completo de `migrations/009_add_referral_system.sql`
+4. Click en **Run** (puede tardar 5-10 segundos)
+5. ✅ Verifica que aparezca: "Success. No rows returned"
+
+**NOTA:** Esta migración crea:
+- 2 tablas: `user_referrals`, `referral_stats`
+- 3 funciones: generación de códigos, triggers automáticos
+- 1 vista: `referral_dashboard`
+- 6 indexes para optimizar queries
+
+**Beneficios:**
+- Códigos únicos de referido para cada usuario
+- Tracking automático de referidos
+- Recompensas automáticas (cupones + puntos)
+- Stats en tiempo real
+
 ### Verificación
 Para confirmar que las migraciones se aplicaron correctamente:
 ```sql
@@ -71,6 +93,19 @@ FROM pg_indexes
 WHERE schemaname = 'public' 
   AND indexname LIKE 'idx_%'
 ORDER BY tablename, indexname;
+
+-- ✨ NUEVO: Verifica tablas de referidos
+SELECT * FROM user_referrals LIMIT 5;
+SELECT * FROM referral_stats LIMIT 5;
+SELECT * FROM referral_dashboard LIMIT 5;
+
+-- Verifica que se crearon las funciones
+SELECT proname FROM pg_proc 
+WHERE proname IN (
+  'generate_referral_code', 
+  'create_referral_stats_for_user',
+  'update_referral_stats'
+);
 ```
 
 ---

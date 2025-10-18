@@ -4,7 +4,9 @@ import { ReactNode } from 'react';
 
 const sidebarNavItems = [
   { title: 'Mis Pedidos', href: '/account/orders' },
-  { title: 'Mi Perfil', href: '/account/profile' }, // Placeholder para el futuro
+  { title: 'Mi Perfil', href: '/account/profile' },
+  { title: 'Wishlist', href: '/account/wishlist' },
+  { title: 'Mis Referidos', href: '/account/referrals' },
 ];
 
 export default function AccountLayout({ children }: { children: ReactNode }) {

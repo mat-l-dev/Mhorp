@@ -11,6 +11,7 @@ import { getCurrentUser } from './auth';
 import { type CartItem } from '@/lib/store/cart';
 import { eq, and } from 'drizzle-orm';
 import { revalidatePath } from 'next/cache';
+import { completeReferral } from './referral';
 
 /**
  * Crea un nuevo pedido a partir del carrito actual
@@ -51,6 +52,22 @@ export async function createOrder(items: CartItem[], totalAmount: number, shippi
 
       return order;
     });
+
+    // Verificar si es la primera compra del usuario (para sistema de referidos)
+    try {
+      const userOrders = await db.query.orders.findMany({
+        where: eq(orders.userId, user.id),
+      });
+
+      // Si es la primera compra (solo existe esta orden), completar referido
+      if (userOrders.length === 1) {
+        await completeReferral(user.id, newOrder.id, totalAmount.toString());
+        console.log('✅ Primera compra detectada - verificando referido');
+      }
+    } catch (referralError) {
+      // No fallar la orden si hay error en referidos
+      console.error('Error al procesar referido:', referralError);
+    }
 
     // Si la transacción fue exitosa, redirigimos a la página de confirmación
     // Esta redirección se captura en el cliente para limpiar el carrito.

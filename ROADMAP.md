@@ -428,31 +428,54 @@ ALTER TABLE reviews ADD COLUMN is_verified BOOLEAN DEFAULT FALSE;
 }
 ```
 
-##### 4. Sistema de Referidos
+##### 4. ~~Sistema de Referidos~~ **[COMPLETADO]**
+
+**Estado:** ✅ Implementado completamente  
+**Commit:** TBD  
+**Documentación:** `REFERRAL_SYSTEM.md`
+
+**Features implementadas:**
+- ✅ Códigos únicos de referido (8 caracteres)
+- ✅ Tracking automático via URL params (`?ref=CODE`)
+- ✅ Persistencia en localStorage (30 días)
+- ✅ Dashboard de referidos con métricas en tiempo real
+- ✅ Recompensas automáticas:
+  - Nuevo usuario: 10% descuento (cupón válido 30 días)
+  - Usuario referidor: 200 puntos al completar primera compra
+- ✅ Compartir en WhatsApp, Facebook, Twitter
+- ✅ Auto-detección en signup page
+- ✅ Triggers PostgreSQL para stats automáticas
+- ✅ Vista precomputada para performance
+- ✅ Validación en tiempo real de códigos
+
+**Archivos creados:**
+- `migrations/009_add_referral_system.sql` - Base de datos completa
+- `src/actions/referral.ts` - Server actions
+- `src/components/account/ReferralDashboard.tsx` - Dashboard UI
+- `src/app/(store)/account/referrals/page.tsx` - Página de referidos
+- `src/hooks/use-referral-tracking.ts` - Tracking hook
+- `REFERRAL_SYSTEM.md` - Documentación completa
+
+**Schema actualizado:**
+- `src/lib/db/schema.ts` - Añadidas tablas userReferrals y referralStats
+
+**Integración:**
+- Signup page (`src/app/(auth)/signup/page.tsx`) - Con soporte para referidos
+- Create order (`src/actions/order.ts`) - Detección de primera compra
+
+**Mejora de engagement:** Sistema viral completo con growth loop
+
 ```typescript
-// Cada usuario tiene un código único
-const referralCode = generateReferralCode(userId);
-
-// Link de referido
-const referralLink = `${BASE_URL}?ref=${referralCode}`;
-
-// Cuando alguien se registra con el link
-export async function handleReferralSignup(refCode: string, newUserId: string) {
-  const referrer = await getUserByReferralCode(refCode);
-  
-  if (referrer) {
-    // Dar puntos al que refirió
-    await addPoints(referrer.id, 200, 'referral', newUserId);
-    
-    // Dar cupón al nuevo usuario
-    await createCouponForUser(newUserId, {
-      code: `BIENVENIDA${newUserId.slice(0, 6)}`,
-      discountType: 'percentage',
-      discountValue: 10,
-      expiresAt: addDays(new Date(), 30),
-    });
-  }
-}
+// Ejemplo de uso
+const stats = await getUserReferralStats();
+// {
+//   referralCode: 'ABCD1234',
+//   totalReferrals: 15,
+//   completedReferrals: 8,
+//   totalPointsEarned: 1600,
+//   conversionRate: 53.33,
+//   referralLink: 'https://mhorp.com?ref=ABCD1234'
+// }
 ```
 
 ---
