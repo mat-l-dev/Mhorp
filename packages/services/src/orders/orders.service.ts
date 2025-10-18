@@ -3,6 +3,7 @@
 
 import type { DrizzleClient } from '../common/types';
 import type { AuthService } from '../auth/auth.service';
+import type { StorageService } from '../storage/storage.service';
 import {
   UnauthorizedError,
   ForbiddenError,
@@ -98,9 +99,10 @@ export class OrdersService {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     private ordersTable: any,
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    private orderItemsTable: any
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars
-    // private paymentProofsTable: any // TODO: Usar cuando implementemos upload de proofs
+    private orderItemsTable: any,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    private paymentProofsTable: any,
+    private storage?: StorageService // Opcional para no romper código existente
   ) {}
 
   /**
@@ -314,6 +316,68 @@ export class OrdersService {
     };
 
     return validTransitions[from]?.includes(to) || false;
+  }
+
+  /**
+   * Sube un comprobante de pago para una orden
+   */
+  async uploadProof(orderId: string, file: File): Promise<{ path: string; signedUrl?: string }> {
+    const user = await this.auth.getCurrentUser();
+
+    if (!user) {
+      throw new UnauthorizedError();
+    }
+
+    if (!this.storage) {
+      throw new BusinessError('StorageService no configurado');
+    }
+
+    // Verificar que la orden existe y pertenece al usuario
+    const orderResult = await this.db
+      .select()
+      .from(this.ordersTable)
+      .where(eq(this.ordersTable.id, orderId))
+      .limit(1);
+
+    const order = orderResult[0];
+
+    if (!order) {
+      throw new NotFoundError('Orden', orderId);
+    }
+
+    // Verificar permisos
+    const isAdmin = await this.auth.isAdmin();
+    if (order.userId !== user.id && !isAdmin) {
+      throw new ForbiddenError('No puedes subir comprobantes para esta orden');
+    }
+
+    // Subir archivo usando StorageService
+    const uploadResult = await this.storage.uploadPaymentProof(
+      user.id,
+      orderId,
+      file
+    );
+
+    // Crear registro en payment_proofs
+    await this.db.insert(this.paymentProofsTable).values({
+      orderId,
+      userId: user.id,
+      filePath: uploadResult.path,
+    });
+
+    // Actualizar estado de la orden a "payment_pending_verification"
+    await this.db
+      .update(this.ordersTable)
+      .set({
+        status: 'payment_pending_verification',
+        updatedAt: new Date(),
+      })
+      .where(eq(this.ordersTable.id, orderId));
+
+    return {
+      path: uploadResult.path,
+      signedUrl: uploadResult.signedUrl,
+    };
   }
 
   /**

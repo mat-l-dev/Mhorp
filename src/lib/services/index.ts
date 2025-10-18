@@ -3,8 +3,8 @@
 
 import { createClient } from '@/lib/supabase/server';
 import { db } from '@/lib/db';
-import { users, orders, orderItems } from '@/lib/db/schema';
-import { AuthService, OrdersService } from '@mhorp/services';
+import { users, orders, orderItems, paymentProofs } from '@/lib/db/schema';
+import { AuthService, OrdersService, StorageService } from '@mhorp/services';
 
 /**
  * Obtiene una instancia del AuthService
@@ -16,13 +16,30 @@ export async function getAuthService() {
 }
 
 /**
+ * Obtiene una instancia del StorageService
+ * IMPORTANTE: Debe ser llamado dentro de Server Actions o Server Components
+ */
+export async function getStorageService() {
+  const supabase = await createClient();
+  return new StorageService(supabase);
+}
+
+/**
  * Obtiene una instancia del OrdersService
  * IMPORTANTE: Debe ser llamado dentro de Server Actions o Server Components
  */
 export async function getOrdersService() {
   const supabase = await createClient();
   const authService = new AuthService(supabase, db, users);
-  return new OrdersService(db, authService, orders, orderItems);
+  const storageService = new StorageService(supabase);
+  return new OrdersService(
+    db,
+    authService,
+    orders,
+    orderItems,
+    paymentProofs,
+    storageService
+  );
 }
 
 /**

@@ -13,6 +13,12 @@ export type {
   OrderWithDetails,
 } from './orders/orders.service';
 
+export { StorageService } from './storage/storage.service';
+export type {
+  FileValidationOptions,
+  UploadResult,
+} from './storage/storage.service';
+
 // Exportar errores
 export {
   AppError,
