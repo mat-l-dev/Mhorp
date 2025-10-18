@@ -9,6 +9,7 @@
     "dev": "tsc --watch",
     "test": "vitest",
     "test:watch": "vitest watch",
+    "test:coverage": "vitest run --coverage",
     "lint": "eslint src --ext .ts"
   },
   "dependencies": {
@@ -18,7 +19,6 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0",
-    "vitest": "workspace:*"
+    "typescript": "^5.0.0"
   }
 }
